@@ -230,6 +230,7 @@
 
             const [toastMessage, setToastMessage] = useState(null);
             const [isXlsxLoaded, setIsXlsxLoaded] = useState(false);
+            const [confirmModal, setConfirmModal] = useState(null);
 
             useEffect(() => {
                 if (window.XLSX) {
@@ -261,14 +262,25 @@
 
             const generateId = () => Math.random().toString(36).substr(2, 9);
 
+            const getYearFromDate = (dateStr) => {
+                if (!dateStr) return null;
+                const match = String(dateStr).trim().match(/^(\d{4})/);
+                return match ? parseInt(match[1], 10) : null;
+            };
+
             const handleResetData = () => {
-                if (window.confirm('모든 수정 내역을 지우고 초기 데이터(119건)로 되돌리시겠습니까?')) {
-                    setBudgets(INITIAL_BUDGETS);
-                    setTransactions(INITIAL_TRANSACTIONS);
-                    localStorage.removeItem(STORAGE_KEY_BUDGETS);
-                    localStorage.removeItem(STORAGE_KEY_TX);
-                    showToast('초기 데이터로 복원되었습니다.');
-                }
+                setConfirmModal({
+                    title: '데이터 초기화',
+                    message: '모든 수정 내역을 지우고 초기 데이터(119건)로 되돌리시겠습니까?',
+                    onConfirm: () => {
+                        setBudgets(INITIAL_BUDGETS);
+                        setTransactions(INITIAL_TRANSACTIONS);
+                        localStorage.removeItem(STORAGE_KEY_BUDGETS);
+                        localStorage.removeItem(STORAGE_KEY_TX);
+                        showToast('초기 데이터로 복원되었습니다.');
+                        setConfirmModal(null);
+                    }
+                });
             };
 
             // --- 예산현황 집계 계산 ---
@@ -295,7 +307,7 @@
                     if (t.budgetId && t.budgetId.startsWith('cat_')) {
                         const catName = t.budgetId.replace('cat_', '');
                         const targetCat = catDirectUsage[catName] ? catName : '기타';
-                        const txYear = new Date(t.date).getFullYear();
+                        const txYear = getYearFromDate(t.date);
                         catDirectUsage[targetCat].usedAmount += amt;
                         if (txYear === 2026) catDirectUsage[targetCat].used2026 += amt;
                         else if (txYear === 2027) catDirectUsage[targetCat].used2027 += amt;
@@ -317,7 +329,7 @@
                         .forEach(t => {
                             const amt = Number(t.amount) || 0;
                             usedAmount += amt;
-                            const txYear = new Date(t.date).getFullYear();
+                            const txYear = getYearFromDate(t.date);
                             if (txYear === 2026) used2026 += amt;
                             else if (txYear === 2027) used2027 += amt;
                         });
@@ -541,15 +553,27 @@
             };
 
             const deleteBudget = (id) => {
-                if (!window.confirm('이 예산 항목을 삭제하시겠습니까?')) return;
-                setBudgets(budgets.filter(b => b.id !== id));
-                showToast('예산 항목이 삭제되었습니다.');
+                setConfirmModal({
+                    title: '예산 항목 삭제',
+                    message: '이 예산 항목을 삭제하시겠습니까?',
+                    onConfirm: () => {
+                        setBudgets(prev => prev.filter(b => b.id !== id));
+                        showToast('예산 항목이 삭제되었습니다.');
+                        setConfirmModal(null);
+                    }
+                });
             };
 
             const deleteTransaction = (id) => {
-                if (!window.confirm('이 사용 내역을 삭제하시겠습니까?')) return;
-                setTransactions(transactions.filter(t => t.id !== id));
-                showToast('사용 내역이 삭제되었습니다.');
+                setConfirmModal({
+                    title: '사용 내역 삭제',
+                    message: '이 사용 내역을 삭제하시겠습니까?',
+                    onConfirm: () => {
+                        setTransactions(prev => prev.filter(t => t.id !== id));
+                        showToast('사용 내역이 삭제되었습니다.');
+                        setConfirmModal(null);
+                    }
+                });
             };
 
             const CATEGORY_ORDER = ['인건비', '외주비', '경비', '기타'];
@@ -565,71 +589,75 @@
                         </div>
                     )}
 
-                    {/* 헤더 */}
-                    <header className="bg-white shadow-sm border-b border-stone-200 sticky top-0 z-30">
-                        <div className="max-w-[1300px] mx-auto px-4 sm:px-6 lg:px-8">
-                            <div className="flex justify-between items-center h-16">
-                                <div className="flex items-center gap-2">
-                                    <div className="bg-stone-800 text-white p-2 rounded-lg">
-                                        <Icons.PieChart className="w-5 h-5" />
+                    {/* 상단 고정 영역 (헤더 + 핵심 요약 바 + 탭 네비게이션) */}
+                    <div className="sticky top-0 z-30 bg-stone-100/95 backdrop-blur-md border-b border-stone-200 shadow-sm">
+                        {/* 헤더 */}
+                        <header className="bg-white border-b border-stone-200">
+                            <div className="max-w-[1300px] mx-auto px-3 sm:px-6 lg:px-8">
+                                <div className="flex justify-between items-center h-12 sm:h-16">
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-stone-800 text-white p-1.5 sm:p-2 rounded-lg">
+                                            <Icons.PieChart className="w-4 h-4 sm:w-5 sm:h-5" />
+                                        </div>
+                                        <h1 className="text-base sm:text-xl font-bold tracking-tight text-stone-900">&lt;스테이달이실&gt; 예산관리</h1>
                                     </div>
-                                    <h1 className="text-lg sm:text-xl font-bold tracking-tight text-stone-900">&lt;스테이달이실&gt; 예산관리</h1>
-                                </div>
-                                <button
-                                    onClick={handleResetData}
-                                    className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-800 bg-stone-100 hover:bg-stone-200 px-2.5 py-1.5 rounded-lg transition-colors"
-                                    title="초기 119건 데이터로 복원"
-                                >
-                                    <Icons.RotateCcw className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline">초기화</span>
-                                </button>
-                            </div>
-                        </div>
-                    </header>
-
-                    <main className="max-w-[1300px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                        {/* 상단 핵심 요약 바 */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-                            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                                <div className="text-xs font-medium text-stone-500 mb-1">총 입금액 (사업비+이자)</div>
-                                <div className="text-lg sm:text-xl font-bold text-blue-700">{formatCurrency(budgetData.totalIncome)}원</div>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                                <div className="text-xs font-medium text-stone-500 mb-1">실제 사용금액 (누적)</div>
-                                <div className="text-lg sm:text-xl font-bold text-rose-600">{formatCurrency(budgetData.summary.netCost.used)}원</div>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                                <div className="text-xs font-medium text-stone-500 mb-1">현재 통장 잔액 (계산)</div>
-                                <div className="text-lg sm:text-xl font-bold text-emerald-700">{formatCurrency(budgetData.currentBalance)}원</div>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                                <div className="text-xs font-medium text-stone-500 mb-1">26년 입금 대비 집행률</div>
-                                <div className="text-lg sm:text-xl font-bold text-stone-900">
-                                    {budgetData.totalIncome > 0 ? ((budgetData.summary.netCost.used / budgetData.totalIncome) * 100).toFixed(1) : 0}%
+                                    <button
+                                        onClick={handleResetData}
+                                        className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-800 bg-stone-100 hover:bg-stone-200 px-2.5 py-1.5 rounded-lg transition-colors"
+                                        title="초기 119건 데이터로 복원"
+                                    >
+                                        <Icons.RotateCcw className="w-3.5 h-3.5" />
+                                        <span className="hidden sm:inline">초기화</span>
+                                    </button>
                                 </div>
                             </div>
-                        </div>
+                        </header>
 
-                        {/* 탭 네비게이션 */}
-                        <div className="flex space-x-1 bg-stone-200 p-1 rounded-xl mb-6 overflow-x-auto no-scrollbar">
-                            {[
-                                { id: 'budget', name: '예산현황', Icon: Icons.Wallet },
-                                { id: 'usage', name: `사용내역 (${transactions.length})`, Icon: Icons.Receipt },
-                                { id: 'file', name: '파일연동', Icon: Icons.Upload }
-                            ].map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${
-                                        activeTab === tab.id ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-300/50'
-                                    }`}
-                                >
-                                    <tab.Icon className="w-4 h-4" />
-                                    {tab.name}
-                                </button>
-                            ))}
-                        </div>
+                        {/* 상단 핵심 요약 바 + 탭 네비게이션 */}
+                        <div className="max-w-[1300px] mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-4 space-y-2.5 sm:space-y-4">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                                <div className="bg-white px-3 py-2 sm:p-4 rounded-xl border border-stone-200 shadow-sm">
+                                    <div className="text-[11px] sm:text-xs font-medium text-stone-500 mb-0.5 sm:mb-1 truncate">총 입금액 (사업비+이자)</div>
+                                    <div className="text-sm sm:text-xl font-bold text-blue-700">{formatCurrency(budgetData.totalIncome)}원</div>
+                                </div>
+                                <div className="bg-white px-3 py-2 sm:p-4 rounded-xl border border-stone-200 shadow-sm">
+                                    <div className="text-[11px] sm:text-xs font-medium text-stone-500 mb-0.5 sm:mb-1 truncate">실제 사용금액 (누적)</div>
+                                    <div className="text-sm sm:text-xl font-bold text-rose-600">{formatCurrency(budgetData.summary.netCost.used)}원</div>
+                                </div>
+                                <div className="bg-white px-3 py-2 sm:p-4 rounded-xl border border-stone-200 shadow-sm">
+                                    <div className="text-[11px] sm:text-xs font-medium text-stone-500 mb-0.5 sm:mb-1 truncate">현재 통장 잔액 (계산)</div>
+                                    <div className="text-sm sm:text-xl font-bold text-emerald-700">{formatCurrency(budgetData.currentBalance)}원</div>
+                                </div>
+                                <div className="bg-white px-3 py-2 sm:p-4 rounded-xl border border-stone-200 shadow-sm">
+                                    <div className="text-[11px] sm:text-xs font-medium text-stone-500 mb-0.5 sm:mb-1 truncate">26년 입금 대비 집행률</div>
+                                    <div className="text-sm sm:text-xl font-bold text-stone-900">
+                                        {budgetData.totalIncome > 0 ? ((budgetData.summary.netCost.used / budgetData.totalIncome) * 100).toFixed(1) : 0}%
+                                    </div>
+                                </div>
+                            </div>
 
+                            <div className="flex space-x-1 bg-stone-200 p-1 rounded-xl overflow-x-auto no-scrollbar">
+                                {[
+                                    { id: 'budget', name: '예산현황', Icon: Icons.Wallet },
+                                    { id: 'usage', name: `사용내역 (${transactions.length})`, Icon: Icons.Receipt },
+                                    { id: 'file', name: '파일연동', Icon: Icons.Upload }
+                                ].map((tab) => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${
+                                            activeTab === tab.id ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-300/50'
+                                        }`}
+                                    >
+                                        <tab.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                        {tab.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <main className="max-w-[1300px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
                         <div className="animate-fade-in">
                             {/* ===================== [예산현황 탭] ===================== */}
                             {activeTab === 'budget' && (
@@ -668,15 +696,19 @@
                                                         const direct = budgetData.catDirectUsage[category] || { used2026: 0, used2027: 0, usedAmount: 0 };
                                                         if (!items || items.length === 0) return null;
                                                         
+                                                        const itemsUsedSum = items.reduce((sum, item) => sum + item.usedAmount, 0);
                                                         const hasDirect = direct.usedAmount !== 0;
-                                                        const rowSpanCount = items.length + (hasDirect ? 1 : 0);
+                                                        // 통합 정산만 있는 카테고리(인건비, 외주비)는 세부행에 0원을 띄우지 않고 사용금액/잔여/집행률 셀을 병합 표시
+                                                        const isMergedIntegrated = hasDirect && itemsUsedSum === 0;
+                                                        const showExtraDirectRow = hasDirect && itemsUsedSum !== 0;
+                                                        const rowSpanCount = items.length + (showExtraDirectRow ? 1 : 0);
 
                                                         const subTotal2026 = items.reduce((sum, item) => sum + (item.amount2026 || 0), 0);
                                                         const subTotal2027 = items.reduce((sum, item) => sum + (item.amount2027 || 0), 0);
                                                         const subTotalBudget = items.reduce((sum, item) => sum + item.amount, 0);
                                                         const subTotalUsed2026 = items.reduce((sum, item) => sum + (item.used2026 || 0), 0) + direct.used2026;
                                                         const subTotalUsed2027 = items.reduce((sum, item) => sum + (item.used2027 || 0), 0) + direct.used2027;
-                                                        const subTotalUsed = items.reduce((sum, item) => sum + item.usedAmount, 0) + direct.usedAmount;
+                                                        const subTotalUsed = itemsUsedSum + direct.usedAmount;
                                                         const subTotalRemaining = subTotalBudget - subTotalUsed;
                                                         const subTotalRate = subTotalBudget > 0 ? ((subTotalUsed / subTotalBudget) * 100).toFixed(1) : 0;
 
@@ -688,13 +720,49 @@
                                                                         <td className="border border-stone-300 p-2.5 text-center font-medium text-stone-700">{item.subCategory}</td>
                                                                         <td className="border border-stone-300 p-2.5">{item.name}</td>
                                                                         <td className="border border-stone-300 p-2.5 text-right bg-stone-50/50">{formatCurrency(item.amount2026 || 0)}</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-500">{formatCurrency(item.used2026)}</td>
+                                                                        {isMergedIntegrated ? (
+                                                                            index === 0 && (
+                                                                                <td rowSpan={items.length} className="border border-stone-300 p-2.5 text-right bg-amber-50/40 text-rose-600 font-bold align-middle">
+                                                                                    <div>{formatCurrency(direct.used2026)}</div>
+                                                                                    <div className="text-[10px] font-normal text-amber-700 mt-0.5">{category} 통합정산</div>
+                                                                                </td>
+                                                                            )
+                                                                        ) : (
+                                                                            <td className="border border-stone-300 p-2.5 text-right text-rose-500">{formatCurrency(item.used2026)}</td>
+                                                                        )}
                                                                         <td className="border border-stone-300 p-2.5 text-right bg-stone-50/50">{formatCurrency(item.amount2027 || 0)}</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-500">{formatCurrency(item.used2027)}</td>
+                                                                        {isMergedIntegrated ? (
+                                                                            index === 0 && (
+                                                                                <td rowSpan={items.length} className="border border-stone-300 p-2.5 text-right bg-amber-50/40 text-rose-600 font-bold align-middle">
+                                                                                    {formatCurrency(direct.used2027)}
+                                                                                </td>
+                                                                            )
+                                                                        ) : (
+                                                                            <td className="border border-stone-300 p-2.5 text-right text-rose-500">{formatCurrency(item.used2027)}</td>
+                                                                        )}
                                                                         <td className="border border-stone-300 p-2.5 text-right bg-stone-100 font-bold">{formatCurrency(item.amount)}</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-600 font-bold">{formatCurrency(item.usedAmount)}</td>
-                                                                        <td className={`border border-stone-300 p-2.5 text-right ${item.remaining < 0 ? 'text-red-600 font-bold' : 'text-emerald-600'}`}>{formatCurrency(item.remaining)}</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right">{item.rate}%</td>
+                                                                        {isMergedIntegrated ? (
+                                                                            index === 0 && (
+                                                                                <>
+                                                                                    <td rowSpan={items.length} className="border border-stone-300 p-2.5 text-right bg-amber-50/40 text-rose-700 font-bold align-middle">
+                                                                                        <div>{formatCurrency(subTotalUsed)}</div>
+                                                                                        <div className="text-[10px] font-normal text-amber-700 mt-0.5">통합 합계</div>
+                                                                                    </td>
+                                                                                    <td rowSpan={items.length} className={`border border-stone-300 p-2.5 text-right bg-amber-50/40 font-bold align-middle ${subTotalRemaining < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                                                                                        {formatCurrency(subTotalRemaining)}
+                                                                                    </td>
+                                                                                    <td rowSpan={items.length} className="border border-stone-300 p-2.5 text-right bg-amber-50/40 font-bold text-stone-800 align-middle">
+                                                                                        {subTotalRate}%
+                                                                                    </td>
+                                                                                </>
+                                                                            )
+                                                                        ) : (
+                                                                            <>
+                                                                                <td className="border border-stone-300 p-2.5 text-right text-rose-600 font-bold">{formatCurrency(item.usedAmount)}</td>
+                                                                                <td className={`border border-stone-300 p-2.5 text-right ${item.remaining < 0 ? 'text-red-600 font-bold' : 'text-emerald-600'}`}>{formatCurrency(item.remaining)}</td>
+                                                                                <td className="border border-stone-300 p-2.5 text-right">{item.rate}%</td>
+                                                                            </>
+                                                                        )}
                                                                         <td className="border border-stone-300 p-2">
                                                                             <div className="flex justify-center gap-1">
                                                                                 <button onClick={() => { setEditingBudget(item); setIsBudgetModalOpen(true); }} className="text-stone-400 hover:text-blue-600 p-1"><Icons.Edit2 className="w-3.5 h-3.5" /></button>
@@ -703,7 +771,7 @@
                                                                         </td>
                                                                     </tr>
                                                                 ))}
-                                                                {hasDirect && (
+                                                                {showExtraDirectRow && (
                                                                     <tr className="bg-amber-50/50 text-stone-700 italic">
                                                                         <td className="border border-stone-300 p-2.5 text-center font-medium text-amber-800">{category} 통합</td>
                                                                         <td className="border border-stone-300 p-2.5 text-xs text-stone-500">월별 통합 정산 지출액</td>
@@ -1068,6 +1136,22 @@
                                         <button type="submit" className="flex-1 px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white font-medium rounded-lg">저장</button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 모달: 확인(삭제/초기화) */}
+                    {confirmModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                                <div className="p-5">
+                                    <h3 className="text-base font-bold text-stone-900 mb-2">{confirmModal.title}</h3>
+                                    <p className="text-sm text-stone-600">{confirmModal.message}</p>
+                                </div>
+                                <div className="px-5 py-3 bg-stone-50 flex gap-2 justify-end border-t border-stone-100">
+                                    <button type="button" onClick={() => setConfirmModal(null)} className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 text-sm font-medium rounded-lg">취소</button>
+                                    <button type="button" onClick={confirmModal.onConfirm} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg">확인</button>
+                                </div>
                             </div>
                         </div>
                     )}
