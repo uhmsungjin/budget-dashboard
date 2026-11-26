@@ -266,37 +266,30 @@
         const net27 = labor.b27 + outsource.b27 + expense.b27;
         const netTot = net26 + net27;
 
-        // 일반 관리비 (5%)
         const admin26 = Math.round(net26 * 0.05);
         const admin27 = Math.round(net27 * 0.05);
         const adminTot = admin26 + admin27;
 
-        // 기업 이윤 (3%) : 엑셀 수식 = (순 원가 합계 + 일반 관리비) * 3%
         const profit26 = Math.round((net26 + admin26) * 0.03);
         const profit27 = Math.round((net27 + admin27) * 0.03);
         const profitTot = profit26 + profit27;
 
-        // 운영 원가
         const op26 = net26 + admin26 + profit26;
         const op27 = net27 + admin27 + profit27;
         const opTot = op26 + op27;
 
-        // 부가 가치세 (10%)
         const vat26 = Math.round(op26 * 0.1);
         const vat27 = Math.round(op27 * 0.1);
         const vatTot = Math.round(opTot * 0.1);
 
-        // 총 운영비용
         const tot26 = op26 + vat26;
         const tot27 = op27 + vat27;
         const totAll = opTot + vatTot;
 
-        // 최종 운영비용 (만원 단위 이하 절사 -> 200,000,000원)
         const final26 = Math.floor(tot26 / 10000) * 10000;
         const final27 = Math.floor(tot27 / 10000) * 10000;
         const finalAll = Math.floor(totAll / 100000) * 100000;
 
-        // 사용액 집계
         const usedLabor26 = getUsed('인건비', null, 2026);
         const usedLabor27 = getUsed('인건비', null, 2027);
         const usedOut26 = getUsed('외주비', null, 2026);
@@ -357,7 +350,6 @@
                   amount: inAmt, type: 'income', method: '계좌이체', note
                 });
               } else {
-                // 자동 비목 추정
                 let autoCat = '경비 - 유지 관리비';
                 const text = `${desc} ${vendor} ${note}`;
                 if (text.includes('블랭크') || text.includes('인건비')) autoCat = '인건비';
@@ -387,7 +379,6 @@
         e.target.value = '';
       };
 
-      // 사용내역 저장
       const saveTx = (form) => {
         const amt = Number(form.amount) || 0;
         const isIncome = form.category === '입금';
@@ -407,7 +398,6 @@
         setTxModal({ open: false, data: null });
       };
 
-      // 예산항목 저장
       const saveBudget = (form) => {
         const obj = {
           ...form,
@@ -424,7 +414,6 @@
         setBudgetModal({ open: false, data: null });
       };
 
-      // 필터링된 사용내역 (최신순)
       const filteredTx = useMemo(() => {
         return [...transactions]
           .sort((a, b) => b.id - a.id)
@@ -445,7 +434,7 @@
       return (
         <div className="min-h-screen bg-stone-100 pb-12">
           {/* 상단 고정 헤더 + 요약 + 탭 */}
-          <div className="sticky top-0 z-30 bg-stone-100/95 backdrop-blur border-b border-stone-200 shadow-sm">
+          <div className="sticky top-0 z-30 bg-stone-100/95 backdrop-blur border-b border-stone-300 shadow-sm">
             <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3">
               {/* 타이틀 바 */}
               <div className="flex items-center justify-between mb-3">
@@ -493,7 +482,7 @@
               </div>
 
               {/* 탭 메뉴 */}
-              <div className="grid grid-cols-3 gap-1.5 bg-stone-200/80 p-1 rounded-xl">
+              <div className="grid grid-cols-3 gap-1.5 bg-stone-200 p-1 rounded-xl">
                 {[
                   { id: 'budget', label: '예산현황' },
                   { id: 'history', label: `사용내역 (${transactions.length})` },
@@ -519,11 +508,11 @@
           <div className="max-w-7xl mx-auto px-3 sm:px-6 mt-4 animate-fade-in">
             {/* 1. 예산현황 탭 */}
             {activeTab === 'budget' && (
-              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-2">
+              <div className="bg-white rounded-2xl border border-stone-300 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-stone-300 flex flex-wrap items-center justify-between gap-2 bg-white">
                   <div>
                     <h2 className="text-base font-bold text-stone-900">2026-2027 운영 예산현황</h2>
-                    <p className="text-xs text-stone-500 mt-0.5">사용내역 탭의 지출 데이터가 실시간으로 합산됩니다. (항목 클릭 시 수정 가능)</p>
+                    <p className="text-xs text-stone-500 mt-0.5">사용내역 탭의 지출 데이터가 실시간으로 합산됩니다. (비목명 클릭 시 수정 가능)</p>
                   </div>
                   <button
                     onClick={() => setBudgetModal({ open: true, data: { category: '경비', item: '', detail: '', b2026: 0, b2027: 0 } })}
@@ -534,119 +523,127 @@
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs sm:text-sm border-collapse min-w-[920px]">
+                  <table className="w-full text-xs sm:text-sm border-collapse min-w-[960px]">
                     <thead>
-                      <tr className="bg-stone-100 text-stone-700 border-b border-stone-200">
-                        <th className="py-2.5 px-3 text-center font-semibold border-r border-stone-200 w-16">구분</th>
-                        <th className="py-2.5 px-3 text-left font-semibold border-r border-stone-200">비목</th>
-                        <th className="py-2.5 px-3 text-left font-semibold border-r border-stone-200">내용</th>
-                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200">2026 금액</th>
-                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200 bg-rose-50/70 text-rose-700">26년 사용</th>
-                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200">2027 금액</th>
-                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200 bg-rose-50/70 text-rose-700">27년 사용</th>
-                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200">합계 (예산)</th>
-                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200 bg-rose-50/70 text-rose-700">총 사용</th>
-                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200 text-emerald-700">잔여예산</th>
-                        <th className="py-2.5 px-3 text-right font-semibold w-16">집행률</th>
+                      {/* 1단 그룹 헤더 */}
+                      <tr className="bg-stone-800 text-white text-xs">
+                        <th colSpan={3} className="py-2 px-3 text-center font-semibold border-r-2 border-stone-600">예산 항목</th>
+                        <th colSpan={2} className="py-2 px-3 text-center font-semibold border-r-2 border-stone-600 bg-stone-700">2026년</th>
+                        <th colSpan={2} className="py-2 px-3 text-center font-semibold border-r-2 border-stone-600 bg-stone-700">2027년</th>
+                        <th colSpan={4} className="py-2 px-3 text-center font-semibold bg-stone-900">전체 합계 및 집행 현황</th>
+                      </tr>
+                      {/* 2단 세부 헤더 */}
+                      <tr className="bg-stone-200 text-stone-800 border-b-2 border-stone-400 text-xs">
+                        <th className="py-2.5 px-2 text-center font-bold border-r border-stone-300 w-16 whitespace-nowrap">구분</th>
+                        <th className="py-2.5 px-3 text-left font-bold border-r border-stone-300 whitespace-nowrap">비목</th>
+                        <th className="py-2.5 px-3 text-left font-bold border-r-2 border-stone-400 whitespace-nowrap">내용</th>
+                        <th className="py-2.5 px-3 text-right font-bold border-r border-stone-300 whitespace-nowrap">26년 예산</th>
+                        <th className="py-2.5 px-3 text-right font-bold border-r-2 border-stone-400 bg-rose-100/70 text-rose-800 whitespace-nowrap">26년 사용</th>
+                        <th className="py-2.5 px-3 text-right font-bold border-r border-stone-300 whitespace-nowrap">27년 예산</th>
+                        <th className="py-2.5 px-3 text-right font-bold border-r-2 border-stone-400 bg-rose-100/70 text-rose-800 whitespace-nowrap">27년 사용</th>
+                        <th className="py-2.5 px-3 text-right font-bold border-r border-stone-300 whitespace-nowrap">총 예산</th>
+                        <th className="py-2.5 px-3 text-right font-bold border-r border-stone-300 bg-rose-100/70 text-rose-800 whitespace-nowrap">총 사용</th>
+                        <th className="py-2.5 px-3 text-right font-bold border-r border-stone-300 bg-emerald-100/60 text-emerald-800 whitespace-nowrap">잔여예산</th>
+                        <th className="py-2.5 px-3 text-right font-bold w-16 whitespace-nowrap">집행률</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-200">
-                      {/* 인건비 섹션 (통합 정산 병합 표시) */}
+                      {/* 인건비 섹션 */}
                       {calc.labor.rows.map((row, idx) => (
-                        <tr key={row.id} className="hover:bg-stone-50">
+                        <tr key={row.id} className="hover:bg-amber-50/40">
                           {idx === 0 && (
-                            <td rowSpan={calc.labor.rows.length + 1} className="py-2 px-2 text-center font-bold bg-stone-50 border-r border-stone-200">인건비</td>
+                            <td rowSpan={calc.labor.rows.length + 1} className="py-2 px-2 text-center font-bold bg-stone-200/80 text-stone-900 border-r border-stone-300 border-b-2 border-b-stone-400">인건비</td>
                           )}
-                          <td className="py-2 px-3 border-r border-stone-200 font-medium cursor-pointer hover:text-blue-600" onClick={() => setBudgetModal({ open: true, data: row })}>{row.item}</td>
-                          <td className="py-2 px-3 border-r border-stone-200 text-stone-600">{row.detail}</td>
-                          <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2026)}</td>
+                          <td className="py-2 px-3 border-r border-stone-200 font-medium cursor-pointer hover:text-blue-600 whitespace-nowrap" onClick={() => setBudgetModal({ open: true, data: row })}>{row.item}</td>
+                          <td className="py-2 px-3 border-r-2 border-stone-400 text-stone-600 whitespace-nowrap">{row.detail}</td>
+                          <td className="py-2 px-3 text-right border-r border-stone-200 whitespace-nowrap">{fmt(row.b2026)}</td>
                           {idx === 0 && (
-                            <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                            <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r-2 border-stone-400 bg-rose-50/40 text-rose-600 font-semibold align-middle whitespace-nowrap">
                               {fmt(calc.usedLabor26)}
                               <div className="text-[10px] text-stone-400 font-normal">통합 정산</div>
                             </td>
                           )}
-                          <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2027)}</td>
+                          <td className="py-2 px-3 text-right border-r border-stone-200 whitespace-nowrap">{fmt(row.b2027)}</td>
                           {idx === 0 && (
-                            <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                            <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r-2 border-stone-400 bg-rose-50/40 text-rose-600 font-semibold align-middle whitespace-nowrap">
                               {fmt(calc.usedLabor27)}
                             </td>
                           )}
-                          <td className="py-2 px-3 text-right border-r border-stone-200 font-medium">{fmt(row.b2026 + row.b2027)}</td>
+                          <td className="py-2 px-3 text-right border-r border-stone-200 font-medium whitespace-nowrap">{fmt(row.b2026 + row.b2027)}</td>
                           {idx === 0 && (
                             <>
-                              <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                              <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/40 text-rose-600 font-semibold align-middle whitespace-nowrap">
                                 {fmt(calc.usedLabor26 + calc.usedLabor27)}
                               </td>
-                              <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700 font-semibold align-middle">
+                              <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700 font-semibold align-middle whitespace-nowrap">
                                 {fmt(calc.labor.tot - (calc.usedLabor26 + calc.usedLabor27))}
                               </td>
-                              <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right font-semibold align-middle">
+                              <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right font-semibold align-middle whitespace-nowrap">
                                 {calc.labor.tot > 0 ? (((calc.usedLabor26 + calc.usedLabor27) / calc.labor.tot) * 100).toFixed(1) : '0.0'}%
                               </td>
                             </>
                           )}
                         </tr>
                       ))}
-                      <tr className="bg-blue-50/40 font-bold text-blue-700">
-                        <td colSpan={2} className="py-2 px-3 text-center border-r border-stone-200">소계</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.labor.b26)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedLabor26)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.labor.b27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedLabor27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.labor.tot)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedLabor26 + calc.usedLabor27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.labor.tot - (calc.usedLabor26 + calc.usedLabor27))}</td>
-                        <td className="py-2 px-3 text-right text-stone-800">{calc.labor.tot > 0 ? (((calc.usedLabor26 + calc.usedLabor27) / calc.labor.tot) * 100).toFixed(1) : '0.0'}%</td>
+                      <tr className="bg-blue-100/70 font-bold text-blue-800 border-t border-stone-300 border-b-2 border-b-stone-400">
+                        <td colSpan={2} className="py-2 px-3 text-center border-r-2 border-stone-400">인건비 소계</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300">{fmt(calc.labor.b26)}</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(calc.usedLabor26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300">{fmt(calc.labor.b27)}</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(calc.usedLabor27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300">{fmt(calc.labor.tot)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300 text-rose-700">{fmt(calc.usedLabor26 + calc.usedLabor27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300 text-emerald-800">{fmt(calc.labor.tot - (calc.usedLabor26 + calc.usedLabor27))}</td>
+                        <td className="py-2 px-3 text-right text-stone-900">{calc.labor.tot > 0 ? (((calc.usedLabor26 + calc.usedLabor27) / calc.labor.tot) * 100).toFixed(1) : '0.0'}%</td>
                       </tr>
 
-                      {/* 외주비 섹션 (통합 정산 병합 표시) */}
+                      {/* 외주비 섹션 */}
                       {calc.outsource.rows.map((row, idx) => (
-                        <tr key={row.id} className="hover:bg-stone-50">
+                        <tr key={row.id} className="hover:bg-amber-50/40">
                           {idx === 0 && (
-                            <td rowSpan={calc.outsource.rows.length + 1} className="py-2 px-2 text-center font-bold bg-stone-50 border-r border-stone-200">외주비</td>
+                            <td rowSpan={calc.outsource.rows.length + 1} className="py-2 px-2 text-center font-bold bg-stone-200/80 text-stone-900 border-r border-stone-300 border-b-2 border-b-stone-400">외주비</td>
                           )}
-                          <td className="py-2 px-3 border-r border-stone-200 font-medium cursor-pointer hover:text-blue-600" onClick={() => setBudgetModal({ open: true, data: row })}>{row.item}</td>
-                          <td className="py-2 px-3 border-r border-stone-200 text-stone-600">{row.detail}</td>
-                          <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2026)}</td>
+                          <td className="py-2 px-3 border-r border-stone-200 font-medium cursor-pointer hover:text-blue-600 whitespace-nowrap" onClick={() => setBudgetModal({ open: true, data: row })}>{row.item}</td>
+                          <td className="py-2 px-3 border-r-2 border-stone-400 text-stone-600 whitespace-nowrap">{row.detail}</td>
+                          <td className="py-2 px-3 text-right border-r border-stone-200 whitespace-nowrap">{fmt(row.b2026)}</td>
                           {idx === 0 && (
-                            <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                            <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r-2 border-stone-400 bg-rose-50/40 text-rose-600 font-semibold align-middle whitespace-nowrap">
                               {fmt(calc.usedOut26)}
                               <div className="text-[10px] text-stone-400 font-normal">통합 정산</div>
                             </td>
                           )}
-                          <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2027)}</td>
+                          <td className="py-2 px-3 text-right border-r border-stone-200 whitespace-nowrap">{fmt(row.b2027)}</td>
                           {idx === 0 && (
-                            <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                            <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r-2 border-stone-400 bg-rose-50/40 text-rose-600 font-semibold align-middle whitespace-nowrap">
                               {fmt(calc.usedOut27)}
                             </td>
                           )}
-                          <td className="py-2 px-3 text-right border-r border-stone-200 font-medium">{fmt(row.b2026 + row.b2027)}</td>
+                          <td className="py-2 px-3 text-right border-r border-stone-200 font-medium whitespace-nowrap">{fmt(row.b2026 + row.b2027)}</td>
                           {idx === 0 && (
                             <>
-                              <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                              <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/40 text-rose-600 font-semibold align-middle whitespace-nowrap">
                                 {fmt(calc.usedOut26 + calc.usedOut27)}
                               </td>
-                              <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700 font-semibold align-middle">
+                              <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700 font-semibold align-middle whitespace-nowrap">
                                 {fmt(calc.outsource.tot - (calc.usedOut26 + calc.usedOut27))}
                               </td>
-                              <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right font-semibold align-middle">
+                              <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right font-semibold align-middle whitespace-nowrap">
                                 {calc.outsource.tot > 0 ? (((calc.usedOut26 + calc.usedOut27) / calc.outsource.tot) * 100).toFixed(1) : '0.0'}%
                               </td>
                             </>
                           )}
                         </tr>
                       ))}
-                      <tr className="bg-blue-50/40 font-bold text-blue-700">
-                        <td colSpan={2} className="py-2 px-3 text-center border-r border-stone-200">소계</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.outsource.b26)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedOut26)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.outsource.b27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedOut27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.outsource.tot)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedOut26 + calc.usedOut27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.outsource.tot - (calc.usedOut26 + calc.usedOut27))}</td>
-                        <td className="py-2 px-3 text-right text-stone-800">{calc.outsource.tot > 0 ? (((calc.usedOut26 + calc.usedOut27) / calc.outsource.tot) * 100).toFixed(1) : '0.0'}%</td>
+                      <tr className="bg-blue-100/70 font-bold text-blue-800 border-t border-stone-300 border-b-2 border-b-stone-400">
+                        <td colSpan={2} className="py-2 px-3 text-center border-r-2 border-stone-400">외주비 소계</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300">{fmt(calc.outsource.b26)}</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(calc.usedOut26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300">{fmt(calc.outsource.b27)}</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(calc.usedOut27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300">{fmt(calc.outsource.tot)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300 text-rose-700">{fmt(calc.usedOut26 + calc.usedOut27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300 text-emerald-800">{fmt(calc.outsource.tot - (calc.usedOut26 + calc.usedOut27))}</td>
+                        <td className="py-2 px-3 text-right text-stone-900">{calc.outsource.tot > 0 ? (((calc.usedOut26 + calc.usedOut27) / calc.outsource.tot) * 100).toFixed(1) : '0.0'}%</td>
                       </tr>
 
                       {/* 경비 섹션 */}
@@ -659,34 +656,34 @@
                         const uTot = u26 + u27;
 
                         return (
-                          <tr key={row.id} className="hover:bg-stone-50">
+                          <tr key={row.id} className="hover:bg-amber-50/40">
                             {idx === 0 && (
-                              <td rowSpan={calc.expense.rows.length + 1} className="py-2 px-2 text-center font-bold bg-stone-50 border-r border-stone-200">경비</td>
+                              <td rowSpan={calc.expense.rows.length + 1} className="py-2 px-2 text-center font-bold bg-stone-200/80 text-stone-900 border-r border-stone-300 border-b-2 border-b-stone-400">경비</td>
                             )}
-                            <td className="py-2 px-3 border-r border-stone-200 font-medium cursor-pointer hover:text-blue-600" onClick={() => setBudgetModal({ open: true, data: row })}>{row.item}</td>
-                            <td className="py-2 px-3 border-r border-stone-200 text-stone-600">{row.detail}</td>
-                            <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2026)}</td>
+                            <td className="py-2 px-3 border-r border-stone-200 font-medium cursor-pointer hover:text-blue-600 whitespace-nowrap" onClick={() => setBudgetModal({ open: true, data: row })}>{row.item}</td>
+                            <td className="py-2 px-3 border-r-2 border-stone-400 text-stone-600 whitespace-nowrap">{row.detail}</td>
+                            <td className="py-2 px-3 text-right border-r border-stone-200 whitespace-nowrap">{fmt(row.b2026)}</td>
                             {isFirstOfItem && (
-                              <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-medium align-middle">
+                              <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r-2 border-stone-400 bg-rose-50/40 text-rose-600 font-medium align-middle whitespace-nowrap">
                                 {fmt(u26)}
                               </td>
                             )}
-                            <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2027)}</td>
+                            <td className="py-2 px-3 text-right border-r border-stone-200 whitespace-nowrap">{fmt(row.b2027)}</td>
                             {isFirstOfItem && (
-                              <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-medium align-middle">
+                              <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r-2 border-stone-400 bg-rose-50/40 text-rose-600 font-medium align-middle whitespace-nowrap">
                                 {fmt(u27)}
                               </td>
                             )}
-                            <td className="py-2 px-3 text-right border-r border-stone-200 font-medium">{fmt(row.b2026 + row.b2027)}</td>
+                            <td className="py-2 px-3 text-right border-r border-stone-200 font-medium whitespace-nowrap">{fmt(row.b2026 + row.b2027)}</td>
                             {isFirstOfItem && (
                               <>
-                                <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-medium align-middle">
+                                <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/40 text-rose-600 font-medium align-middle whitespace-nowrap">
                                   {fmt(uTot)}
                                 </td>
-                                <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700 font-medium align-middle">
+                                <td rowSpan={sameItemRows.length} className={`py-2 px-3 text-right border-r border-stone-200 font-medium align-middle whitespace-nowrap ${itemTotBudget - uTot < 0 ? 'text-rose-600 font-bold' : 'text-emerald-700'}`}>
                                   {fmt(itemTotBudget - uTot)}
                                 </td>
-                                <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right font-medium align-middle">
+                                <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right font-medium align-middle whitespace-nowrap">
                                   {itemTotBudget > 0 ? ((uTot / itemTotBudget) * 100).toFixed(1) : '0.0'}%
                                 </td>
                               </>
@@ -694,86 +691,86 @@
                           </tr>
                         );
                       })}
-                      <tr className="bg-blue-50/40 font-bold text-blue-700">
-                        <td colSpan={2} className="py-2 px-3 text-center border-r border-stone-200">소계</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.expense.b26)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedExp26)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.expense.b27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedExp27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.expense.tot)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedExp26 + calc.usedExp27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.expense.tot - (calc.usedExp26 + calc.usedExp27))}</td>
-                        <td className="py-2 px-3 text-right text-stone-800">{calc.expense.tot > 0 ? (((calc.usedExp26 + calc.usedExp27) / calc.expense.tot) * 100).toFixed(1) : '0.0'}%</td>
+                      <tr className="bg-blue-100/70 font-bold text-blue-800 border-t border-stone-300 border-b-2 border-b-stone-400">
+                        <td colSpan={2} className="py-2 px-3 text-center border-r-2 border-stone-400">경비 소계</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300">{fmt(calc.expense.b26)}</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(calc.usedExp26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300">{fmt(calc.expense.b27)}</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(calc.usedExp27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300">{fmt(calc.expense.tot)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300 text-rose-700">{fmt(calc.usedExp26 + calc.usedExp27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-300 text-emerald-800">{fmt(calc.expense.tot - (calc.usedExp26 + calc.usedExp27))}</td>
+                        <td className="py-2 px-3 text-right text-stone-900">{calc.expense.tot > 0 ? (((calc.usedExp26 + calc.usedExp27) / calc.expense.tot) * 100).toFixed(1) : '0.0'}%</td>
                       </tr>
 
-                      {/* 하단 집계 (엑셀 수식 100% 반영) */}
-                      <tr className="bg-stone-100 font-bold">
-                        <td colSpan={3} className="py-2.5 px-3 text-center border-r border-stone-200">순 원가 합계</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.net26)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.expense2026)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.net27)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.expense2027)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.netTot)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.totalExpense)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.netTot - summary.totalExpense)}</td>
+                      {/* 하단 집계 */}
+                      <tr className="bg-stone-200 font-bold text-stone-900 border-b border-stone-300">
+                        <td colSpan={3} className="py-2.5 px-3 text-center border-r-2 border-stone-400">순 원가 합계</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300">{fmt(calc.net26)}</td>
+                        <td className="py-2.5 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(summary.expense2026)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300">{fmt(calc.net27)}</td>
+                        <td className="py-2.5 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(summary.expense2027)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300">{fmt(calc.netTot)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300 text-rose-700">{fmt(summary.totalExpense)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300 text-emerald-800">{fmt(calc.netTot - summary.totalExpense)}</td>
                         <td className="py-2.5 px-3 text-right">{calc.netTot > 0 ? ((summary.totalExpense / calc.netTot) * 100).toFixed(1) : '0.0'}%</td>
                       </tr>
-                      <tr className="text-stone-600">
-                        <td colSpan={3} className="py-2 px-3 text-center border-r border-stone-200">일반 관리비 (5%)</td>
+                      <tr className="text-stone-600 bg-white">
+                        <td colSpan={3} className="py-2 px-3 text-center border-r-2 border-stone-400">일반 관리비 (5%)</td>
                         <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.admin26)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-stone-400">-</td>
                         <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.admin27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-stone-400">-</td>
                         <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.adminTot)}</td>
                         <td colSpan={3} className="py-2 px-3 text-center text-xs text-stone-400">순 원가 × 5%</td>
                       </tr>
-                      <tr className="text-stone-600">
-                        <td colSpan={3} className="py-2 px-3 text-center border-r border-stone-200">기업 이윤 (3%)</td>
+                      <tr className="text-stone-600 bg-stone-50/70">
+                        <td colSpan={3} className="py-2 px-3 text-center border-r-2 border-stone-400">기업 이윤 (3%)</td>
                         <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.profit26)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-stone-400">-</td>
                         <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.profit27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-stone-400">-</td>
                         <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.profitTot)}</td>
                         <td colSpan={3} className="py-2 px-3 text-center text-xs text-stone-400">(순 원가 + 일반 관리비) × 3%</td>
                       </tr>
-                      <tr className="bg-blue-50/70 font-bold text-blue-800">
-                        <td colSpan={3} className="py-2.5 px-3 text-center border-r border-stone-200">운영 원가</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.op26)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 font-normal text-stone-400">-</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.op27)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 font-normal text-stone-400">-</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.opTot)}</td>
+                      <tr className="bg-blue-50 font-bold text-blue-900 border-t border-stone-300">
+                        <td colSpan={3} className="py-2.5 px-3 text-center border-r-2 border-stone-400">운영 원가</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300">{fmt(calc.op26)}</td>
+                        <td className="py-2.5 px-3 text-right border-r-2 border-stone-400 font-normal text-stone-400">-</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300">{fmt(calc.op27)}</td>
+                        <td className="py-2.5 px-3 text-right border-r-2 border-stone-400 font-normal text-stone-400">-</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300">{fmt(calc.opTot)}</td>
                         <td colSpan={3}></td>
                       </tr>
-                      <tr className="text-stone-600">
-                        <td colSpan={3} className="py-2 px-3 text-center border-r border-stone-200">부가 가치세 (10%)</td>
+                      <tr className="text-stone-600 bg-white">
+                        <td colSpan={3} className="py-2 px-3 text-center border-r-2 border-stone-400">부가 가치세 (10%)</td>
                         <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.vat26)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-stone-400">-</td>
                         <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.vat27)}</td>
-                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r-2 border-stone-400 text-stone-400">-</td>
                         <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.vatTot)}</td>
                         <td colSpan={3}></td>
                       </tr>
-                      <tr className="bg-blue-100/60 font-bold text-blue-900">
-                        <td colSpan={3} className="py-2.5 px-3 text-center border-r border-stone-200">총 운영비용</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.tot26)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.expense2026)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.tot27)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.expense2027)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.totAll)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.totalExpense)}</td>
-                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.totAll - summary.totalExpense)}</td>
+                      <tr className="bg-blue-100 font-bold text-blue-950 border-t border-stone-300">
+                        <td colSpan={3} className="py-2.5 px-3 text-center border-r-2 border-stone-400">총 운영비용</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300">{fmt(calc.tot26)}</td>
+                        <td className="py-2.5 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(summary.expense2026)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300">{fmt(calc.tot27)}</td>
+                        <td className="py-2.5 px-3 text-right border-r-2 border-stone-400 text-rose-700">{fmt(summary.expense2027)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300">{fmt(calc.totAll)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300 text-rose-700">{fmt(summary.totalExpense)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-300 text-emerald-800">{fmt(calc.totAll - summary.totalExpense)}</td>
                         <td className="py-2.5 px-3 text-right">{calc.totAll > 0 ? ((summary.totalExpense / calc.totAll) * 100).toFixed(1) : '0.0'}%</td>
                       </tr>
-                      <tr className="bg-rose-50 font-bold text-rose-700">
-                        <td colSpan={3} className="py-3 px-3 text-center border-r border-stone-200">최종 운영비용 (만원 단위 이하 절사)</td>
-                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(calc.final26)}</td>
-                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(summary.expense2026)}</td>
-                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(calc.final27)}</td>
-                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(summary.expense2027)}</td>
-                        <td className="py-3 px-3 text-right border-r border-stone-200 text-base">{fmt(calc.finalAll)}</td>
-                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(summary.totalExpense)}</td>
-                        <td className="py-3 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.finalAll - summary.totalExpense)}</td>
+                      <tr className="bg-rose-100/80 font-bold text-rose-800 border-t-2 border-rose-300">
+                        <td colSpan={3} className="py-3 px-3 text-center border-r-2 border-rose-300">최종 운영비용 (만원 단위 이하 절사)</td>
+                        <td className="py-3 px-3 text-right border-r border-rose-200">{fmt(calc.final26)}</td>
+                        <td className="py-3 px-3 text-right border-r-2 border-rose-300">{fmt(summary.expense2026)}</td>
+                        <td className="py-3 px-3 text-right border-r border-rose-200">{fmt(calc.final27)}</td>
+                        <td className="py-3 px-3 text-right border-r-2 border-rose-300">{fmt(summary.expense2027)}</td>
+                        <td className="py-3 px-3 text-right border-r border-rose-200 text-base">{fmt(calc.finalAll)}</td>
+                        <td className="py-3 px-3 text-right border-r border-rose-200">{fmt(summary.totalExpense)}</td>
+                        <td className="py-3 px-3 text-right border-r border-rose-200 text-emerald-800">{fmt(calc.finalAll - summary.totalExpense)}</td>
                         <td className="py-3 px-3 text-right">{calc.finalAll > 0 ? ((summary.totalExpense / calc.finalAll) * 100).toFixed(1) : '0.0'}%</td>
                       </tr>
                     </tbody>
@@ -784,8 +781,8 @@
 
             {/* 2. 사용내역 탭 */}
             {activeTab === 'history' && (
-              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="bg-white rounded-2xl border border-stone-300 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-stone-300 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="text-base font-bold text-stone-900">전체 사용 내역</h2>
                     <p className="text-xs text-stone-500 mt-0.5">총 {filteredTx.length}건이 표시되고 있습니다.</p>
@@ -810,7 +807,7 @@
                 </div>
 
                 {/* 검색 & 필터 */}
-                <div className="p-3 bg-stone-50 border-b border-stone-200 flex flex-col sm:flex-row gap-2">
+                <div className="p-3 bg-stone-100 border-b border-stone-300 flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     placeholder="적요, 사용처, 비고, 날짜 검색..."
@@ -829,51 +826,58 @@
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs sm:text-sm border-collapse min-w-[760px]">
+                  <table className="w-full text-xs sm:text-sm border-collapse min-w-[940px]">
                     <thead>
-                      <tr className="bg-stone-100 text-stone-600 border-b border-stone-200">
-                        <th className="py-2.5 px-3 text-center w-14">연번</th>
-                        <th className="py-2.5 px-3 text-left w-28">날짜</th>
-                        <th className="py-2.5 px-3 text-left">비목</th>
-                        <th className="py-2.5 px-3 text-left">적요</th>
-                        <th className="py-2.5 px-3 text-left">사용처</th>
-                        <th className="py-2.5 px-3 text-right">사용금액</th>
-                        <th className="py-2.5 px-3 text-center w-20">방법</th>
-                        <th className="py-2.5 px-3 text-left">비고</th>
-                        <th className="py-2.5 px-3 text-center w-20">관리</th>
+                      <tr className="bg-stone-200 text-stone-800 border-b-2 border-stone-400 text-xs">
+                        <th className="py-2.5 px-3 text-center font-bold border-r border-stone-300 w-14 whitespace-nowrap">연번</th>
+                        <th className="py-2.5 px-3 text-center font-bold border-r border-stone-300 w-28 whitespace-nowrap">날짜</th>
+                        <th className="py-2.5 px-3 text-left font-bold border-r border-stone-300 whitespace-nowrap">비목</th>
+                        <th className="py-2.5 px-3 text-left font-bold border-r border-stone-300 whitespace-nowrap">적요</th>
+                        <th className="py-2.5 px-3 text-left font-bold border-r border-stone-300 whitespace-nowrap">사용처</th>
+                        <th className="py-2.5 px-3 text-right font-bold border-r border-stone-300 whitespace-nowrap">사용금액</th>
+                        <th className="py-2.5 px-3 text-center font-bold border-r border-stone-300 w-24 whitespace-nowrap">방법</th>
+                        <th className="py-2.5 px-3 text-left font-bold border-r border-stone-300 whitespace-nowrap">비고</th>
+                        <th className="py-2.5 px-3 text-center font-bold w-24 whitespace-nowrap">관리</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-stone-100">
+                    <tbody className="divide-y divide-stone-200">
                       {filteredTx.map(t => (
-                        <tr key={t.id} className="hover:bg-stone-50">
-                          <td className="py-2.5 px-3 text-center text-stone-400">{t.id}</td>
-                          <td className="py-2.5 px-3 text-stone-600">{t.date}</td>
-                          <td className="py-2.5 px-3">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
-                              t.category === '입금' ? 'bg-blue-100 text-blue-700' :
-                              t.category === '인건비' ? 'bg-amber-100 text-amber-800' :
-                              t.category === '외주비' ? 'bg-purple-100 text-purple-800' :
-                              'bg-stone-100 text-stone-700'
+                        <tr key={t.id} className="odd:bg-white even:bg-stone-50/90 hover:bg-amber-50/50 transition-colors">
+                          <td className="py-2.5 px-3 text-center text-stone-500 font-medium border-r border-stone-200/70 whitespace-nowrap">{t.id}</td>
+                          <td className="py-2.5 px-3 text-center text-stone-600 border-r border-stone-200/70 whitespace-nowrap">{t.date}</td>
+                          <td className="py-2.5 px-3 border-r border-stone-200/70 whitespace-nowrap">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold whitespace-nowrap ${
+                              t.category === '입금' ? 'bg-blue-100 text-blue-800' :
+                              t.category === '인건비' ? 'bg-amber-100 text-amber-900' :
+                              t.category === '외주비' ? 'bg-purple-100 text-purple-900' :
+                              'bg-stone-200/80 text-stone-800'
                             }`}>
                               {t.category}
                             </span>
                           </td>
-                          <td className="py-2.5 px-3 font-medium text-stone-800">{t.desc}</td>
-                          <td className="py-2.5 px-3 text-stone-600">{t.vendor}</td>
-                          <td className={`py-2.5 px-3 text-right font-semibold ${
-                            t.type === 'income' ? 'text-blue-600' :
-                            t.amount < 0 ? 'text-emerald-600' : 'text-stone-900'
+                          <td className="py-2.5 px-3 font-medium text-stone-900 border-r border-stone-200/70 whitespace-nowrap">{t.desc}</td>
+                          <td className="py-2.5 px-3 text-stone-700 border-r border-stone-200/70 whitespace-nowrap">{t.vendor}</td>
+                          <td className={`py-2.5 px-3 text-right font-bold border-r border-stone-200/70 whitespace-nowrap ${
+                            t.type === 'income' ? 'text-blue-700' :
+                            t.amount < 0 ? 'text-emerald-700' : 'text-stone-900'
                           }`}>
                             {t.type === 'income' ? `(+) ${fmt(t.amount)}` :
                              t.amount < 0 ? `(+) ${fmt(Math.abs(t.amount))}` : fmt(t.amount)}
                           </td>
-                          <td className="py-2.5 px-3 text-center">
-                            {t.method && <span className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded text-[11px]">{t.method}</span>}
+                          <td className="py-2.5 px-3 text-center border-r border-stone-200/70 whitespace-nowrap">
+                            {t.method && (
+                              <span className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-medium whitespace-nowrap ${
+                                t.method === '계좌이체' ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-stone-100 text-stone-700 border border-stone-200'
+                              }`}>
+                                {t.method}
+                              </span>
+                            )}
                           </td>
-                          <td className="py-2.5 px-3 text-stone-500 text-xs">{t.note}</td>
-                          <td className="py-2.5 px-3 text-center">
+                          <td className="py-2.5 px-3 text-stone-500 text-xs border-r border-stone-200/70 whitespace-nowrap">{t.note}</td>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-2">
-                              <button onClick={() => setTxModal({ open: true, data: t })} className="text-stone-400 hover:text-stone-900 text-xs">수정</button>
+                              <button onClick={() => setTxModal({ open: true, data: t })} className="text-stone-500 hover:text-stone-900 text-xs font-medium">수정</button>
+                              <span className="text-stone-300">|</span>
                               <button
                                 onClick={() => setConfirmModal({
                                   open: true,
@@ -884,7 +888,7 @@
                                     setConfirmModal({ open: false, message: '', onConfirm: null });
                                   }
                                 })}
-                                className="text-stone-400 hover:text-rose-600 text-xs"
+                                className="text-stone-500 hover:text-rose-600 text-xs font-medium"
                               >
                                 삭제
                               </button>
@@ -900,7 +904,7 @@
 
             {/* 3. 파일연동 탭 */}
             {activeTab === 'upload' && (
-              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 sm:p-10 text-center">
+              <div className="bg-white rounded-2xl border border-stone-300 shadow-sm p-6 sm:p-10 text-center">
                 <div className="max-w-md mx-auto">
                   <div className="w-14 h-14 rounded-2xl bg-stone-100 text-stone-700 flex items-center justify-center mx-auto mb-4 text-2xl">📄</div>
                   <h2 className="text-lg font-bold text-stone-900">통장 거래내역 엑셀 연동</h2>
