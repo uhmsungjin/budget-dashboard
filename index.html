@@ -1,1166 +1,1046 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>&lt;스테이달이실&gt; 예산관리</title>
-    
-    <!-- Tailwind CSS (디자인) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & ReactDOM (기능) -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- Babel (React 코드를 브라우저가 읽을 수 있게 변환) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <style>
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        .animate-fade-in-down { animation: fadeInDown 0.3s ease-out forwards; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>&lt;스테이달이실&gt; 예산관리</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <style>
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
-<body class="bg-stone-100 text-stone-800 font-sans">
-    <div id="root"></div>
+<body class="bg-stone-100 text-stone-800 font-sans antialiased">
+  <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
 
-        // --- 아이콘 ---
-        const Icons = {
-            PieChart: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>,
-            Wallet: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
-            Receipt: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17V7"/></svg>,
-            Upload: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
-            Plus: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>,
-            Trash2: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
-            Edit2: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>,
-            X: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>,
-            FileSpreadsheet: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>,
-            CheckCircle2: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
-            AlertCircle: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
-            Search: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
-            RotateCcw: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    // 초기 예산 데이터 (엑셀 기준)
+    const INITIAL_BUDGET = [
+      { id: 'b1', category: '인건비', item: '총괄', detail: '사업 총괄', b2026: 6000000, b2027: 6000000 },
+      { id: 'b2', category: '인건비', item: '관리자', detail: '운영 관리', b2026: 9000000, b2027: 9000000 },
+      { id: 'b3', category: '인건비', item: '기획자', detail: '콘텐츠 및 홍보 기획', b2026: 9000000, b2027: 9000000 },
+      { id: 'b4', category: '외주비', item: '현장 총괄', detail: '현장 총괄', b2026: 6000000, b2027: 6000000 },
+      { id: 'b5', category: '외주비', item: '현장 관리자', detail: '현장 관리', b2026: 9000000, b2027: 9000000 },
+      { id: 'b6', category: '외주비', item: '현장 운영자', detail: '현장 운영', b2026: 9000000, b2027: 9000000 },
+      { id: 'b7', category: '경비', item: '브랜드 개발비', detail: '브랜드 개발', b2026: 6000000, b2027: 0 },
+      { id: 'b8', category: '경비', item: '프로그램 운영비', detail: '상시', b2026: 1200000, b2027: 1200000 },
+      { id: 'b9', category: '경비', item: '프로그램 운영비', detail: '기획', b2026: 10000000, b2027: 0 },
+      { id: 'b10', category: '경비', item: '홍보비', detail: '상시', b2026: 1200000, b2027: 1200000 },
+      { id: 'b11', category: '경비', item: '홍보비', detail: '기획', b2026: 10000000, b2027: 0 },
+      { id: 'b12', category: '경비', item: '유지 관리비', detail: '공간 운영비용', b2026: 19200000, b2027: 19200000 },
+      { id: 'b13', category: '경비', item: '기타경비', detail: '관련 경비', b2026: 1464000, b2027: 1464000 },
+    ];
+
+    // 초기 사용내역 데이터 (1~119번 전체)
+    const INITIAL_TRANSACTIONS = [
+      { id: 1, date: '2026-02-13', category: '입금', desc: '사업비', vendor: '', amount: 115472000, type: 'income', method: '', note: '사업비 입금' },
+      { id: 2, date: '2026-03-21', category: '입금', desc: '이자', vendor: '', amount: 9649, type: 'income', method: '', note: '이자' },
+      { id: 3, date: '2026-03-25', category: '인건비', desc: '인건비 2603', vendor: '㈜블랭크', amount: 2200000, type: 'expense', method: '계좌이체', note: '1회차(26년 3월)' },
+      { id: 4, date: '2026-03-30', category: '외주비', desc: '용역비 2603', vendor: '덕유산 고라니들', amount: 2200000, type: 'expense', method: '계좌이체', note: '1회차(26년 3월)' },
+      { id: 5, date: '2026-03-30', category: '경비 - 브랜드 개발비', desc: '브랜드 개발비 선금', vendor: '씨클레프', amount: 3300000, type: 'expense', method: '계좌이체', note: '선금 50%' },
+      { id: 6, date: '2026-04-30', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전', amount: 116530, type: 'expense', method: '계좌이체', note: '' },
+      { id: 7, date: '2026-04-30', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전', amount: 102210, type: 'expense', method: '계좌이체', note: '' },
+      { id: 8, date: '2026-04-30', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전', amount: 108190, type: 'expense', method: '계좌이체', note: '' },
+      { id: 9, date: '2026-04-30', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전', amount: 118150, type: 'expense', method: '계좌이체', note: '' },
+      { id: 10, date: '2026-04-30', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 1880, type: 'expense', method: '계좌이체', note: '' },
+      { id: 11, date: '2026-04-30', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 1880, type: 'expense', method: '계좌이체', note: '' },
+      { id: 12, date: '2026-04-30', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 1880, type: 'expense', method: '계좌이체', note: '' },
+      { id: 13, date: '2026-04-30', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 900, type: 'expense', method: '계좌이체', note: '' },
+      { id: 14, date: '2026-05-01', category: '경비 - 유지 관리비', desc: '현장관리', vendor: '주식회사 부농', amount: 53000, type: 'expense', method: '체크카드', note: '' },
+      { id: 15, date: '2026-05-02', category: '경비 - 유지 관리비', desc: '현장관리', vendor: '위천제일벽돌', amount: 44000, type: 'expense', method: '체크카드', note: '' },
+      { id: 16, date: '2026-05-06', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '쿠팡', amount: 71800, type: 'expense', method: '체크카드', note: '' },
+      { id: 17, date: '2026-05-11', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '쿠팡', amount: 272900, type: 'expense', method: '체크카드', note: '' },
+      { id: 18, date: '2026-05-18', category: '외주비', desc: '용역비 2604', vendor: '덕유산 고라니들', amount: 2000000, type: 'expense', method: '계좌이체', note: '2회차(26년 4월)' },
+      { id: 19, date: '2026-05-29', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '네이버', amount: 609500, type: 'expense', method: '체크카드', note: '' },
+      { id: 20, date: '2026-05-29', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '네이버', amount: 347600, type: 'expense', method: '체크카드', note: '' },
+      { id: 21, date: '2026-05-29', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 900, type: 'expense', method: '계좌이체', note: '' },
+      { id: 22, date: '2026-05-29', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 1880, type: 'expense', method: '계좌이체', note: '' },
+      { id: 23, date: '2026-05-29', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 1880, type: 'expense', method: '계좌이체', note: '' },
+      { id: 24, date: '2026-05-29', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 1880, type: 'expense', method: '계좌이체', note: '' },
+      { id: 25, date: '2026-06-09', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전', amount: 172520, type: 'expense', method: '계좌이체', note: '' },
+      { id: 26, date: '2026-06-09', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전', amount: 195760, type: 'expense', method: '계좌이체', note: '' },
+      { id: 27, date: '2026-06-09', category: '외주비', desc: '용역비 2604', vendor: '덕유산 고라니들', amount: 200000, type: 'expense', method: '계좌이체', note: '2회차 부가세' },
+      { id: 28, date: '2026-06-09', category: '외주비', desc: '용역비 2605', vendor: '덕유산 고라니들', amount: 2200000, type: 'expense', method: '계좌이체', note: '3회차(26년 5월)' },
+      { id: 29, date: '2026-06-12', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '쿠팡', amount: 286380, type: 'expense', method: '체크카드', note: '' },
+      { id: 30, date: '2026-06-15', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전', amount: 166370, type: 'expense', method: '계좌이체', note: '' },
+      { id: 31, date: '2026-06-15', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전', amount: 142000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 32, date: '2026-06-15', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 4830, type: 'expense', method: '계좌이체', note: '' },
+      { id: 33, date: '2026-06-15', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 6810, type: 'expense', method: '계좌이체', note: '' },
+      { id: 34, date: '2026-06-15', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 3850, type: 'expense', method: '계좌이체', note: '' },
+      { id: 35, date: '2026-06-15', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '거창군', amount: 4830, type: 'expense', method: '계좌이체', note: '' },
+      { id: 36, date: '2026-06-17', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '쿠팡', amount: 155400, type: 'expense', method: '체크카드', note: '' },
+      { id: 37, date: '2026-06-18', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '하늘호수', amount: 490000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 38, date: '2026-06-20', category: '입금', desc: '이자', vendor: '', amount: 22536, type: 'income', method: '', note: '이자' },
+      { id: 39, date: '2026-06-22', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '쿠팡', amount: 37160, type: 'expense', method: '체크카드', note: '' },
+      { id: 40, date: '2026-06-23', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '네이버', amount: 68540, type: 'expense', method: '체크카드', note: '' },
+      { id: 41, date: '2026-06-25', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '쿠팡', amount: 302330, type: 'expense', method: '체크카드', note: '' },
+      { id: 42, date: '2026-06-30', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '쿠팡', amount: 102360, type: 'expense', method: '체크카드', note: '' },
+      { id: 43, date: '2026-06-30', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '오늘의집', amount: 118000, type: 'expense', method: '체크카드', note: '' },
+      { id: 44, date: '2026-07-01', category: '외주비', desc: '용역비 2606', vendor: '덕유산 고라니들', amount: 2200000, type: 'expense', method: '계좌이체', note: '4회차(26년 6월)' },
+      { id: 45, date: '2026-07-01', category: '경비 - 브랜드 개발비', desc: '브랜드 개발비 잔금', vendor: '씨클레프', amount: 3300000, type: 'expense', method: '계좌이체', note: '잔금 50%' },
+      { id: 46, date: '2026-07-01', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '쿠팡', amount: 24180, type: 'expense', method: '체크카드', note: '' },
+      { id: 47, date: '2026-07-02', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '이케아', amount: 45500, type: 'expense', method: '체크카드', note: '' },
+      { id: 48, date: '2026-07-02', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '다이소', amount: 45000, type: 'expense', method: '체크카드', note: '' },
+      { id: 49, date: '2026-07-03', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '다이소', amount: 8000, type: 'expense', method: '체크카드', note: '' },
+      { id: 50, date: '2026-07-08', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '네이버', amount: 92400, type: 'expense', method: '체크카드', note: '' },
+      { id: 51, date: '2026-07-08', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '태산인디고', amount: 14850, type: 'expense', method: '체크카드', note: '' },
+      { id: 52, date: '2026-07-09', category: '경비 - 기타경비', desc: '배송비', vendor: '카카오T비즈', amount: 41400, type: 'expense', method: '체크카드', note: '' },
+      { id: 53, date: '2026-07-09', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '쿠팡', amount: 29900, type: 'expense', method: '체크카드', note: '' },
+      { id: 54, date: '2026-07-15', category: '인건비', desc: '인건비', vendor: '(주)블랭크', amount: 2200000, type: 'expense', method: '계좌이체', note: '2회차(26년 4월)' },
+      { id: 55, date: '2026-07-15', category: '경비 - 홍보비', desc: '현장 사진 촬영 선금', vendor: '유수진(에이스', amount: 660000, type: 'expense', method: '계좌이체', note: '선금 50%' },
+      { id: 56, date: '2026-07-16', category: '경비 - 기타경비', desc: '주유비', vendor: '거창대로주유소', amount: 100000, type: 'expense', method: '체크카드', note: '' },
+      { id: 57, date: '2026-07-23', category: '경비 - 유지 관리비', desc: '보험비', vendor: '메리츠화재해상', amount: 36650, type: 'expense', method: '계좌이체', note: '' },
+      { id: 58, date: '2026-07-23', category: '경비 - 유지 관리비', desc: '보험비', vendor: '메리츠화재해상', amount: 20000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 59, date: '2026-07-24', category: '경비 - 홍보비', desc: '홍보 콘텐츠 선금', vendor: '심채린(리얼리', amount: 1650000, type: 'expense', method: '계좌이체', note: '선금 50%' },
+      { id: 60, date: '2026-07-27', category: '경비 - 유지 관리비', desc: '통신요금', vendor: 'KT통신요금07', amount: 201780, type: 'expense', method: '계좌이체', note: '' },
+      { id: 61, date: '2026-07-27', category: '경비 - 유지 관리비', desc: '방역비', vendor: '세스코07', amount: 40000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 62, date: '2026-07-27', category: '경비 - 유지 관리비', desc: '방역비', vendor: '세스코07', amount: 40000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 63, date: '2026-07-27', category: '경비 - 유지 관리비', desc: '방역비', vendor: '세스코07', amount: 40000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 64, date: '2026-07-27', category: '경비 - 유지 관리비', desc: '방역비', vendor: '세스코07', amount: 40000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 65, date: '2026-07-29', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '주식회사 아성', amount: 24000, type: 'expense', method: '체크카드', note: '' },
+      { id: 66, date: '2026-07-29', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '주식회사 아성', amount: 141000, type: 'expense', method: '체크카드', note: '' },
+      { id: 67, date: '2026-07-30', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '거창사과원예농', amount: 100000, type: 'expense', method: '체크카드', note: '' },
+      { id: 68, date: '2026-07-31', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전(거창군수', amount: 227850, type: 'expense', method: '계좌이체', note: '' },
+      { id: 69, date: '2026-07-31', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전(거창군수', amount: 238980, type: 'expense', method: '계좌이체', note: '' },
+      { id: 70, date: '2026-07-31', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전(거창군수', amount: 184250, type: 'expense', method: '계좌이체', note: '' },
+      { id: 71, date: '2026-07-31', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한전(거창군수', amount: 190930, type: 'expense', method: '계좌이체', note: '' },
+      { id: 72, date: '2026-08-03', category: '인건비', desc: '인건비', vendor: '(주)블랭크', amount: 2200000, type: 'expense', method: '계좌이체', note: '3회차(26년 5월)' },
+      { id: 73, date: '2026-08-03', category: '외주비', desc: '용역비 2607', vendor: '덕유산 고라니들', amount: 2200300, type: 'expense', method: '계좌이체', note: '5회차(26년 7월)' },
+      { id: 74, date: '2026-08-03', category: '경비 - 기타경비', desc: '주유비', vendor: '거창대로주유소', amount: 100000, type: 'expense', method: '체크카드', note: '' },
+      { id: 75, date: '2026-08-03', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '아트비', amount: 21330, type: 'expense', method: '체크카드', note: '' },
+      { id: 76, date: '2026-08-04', category: '경비 - 유지 관리비', desc: '전기안전검사비', vendor: '한국전기안전공', amount: 126940, type: 'expense', method: '체크카드', note: '' },
+      { id: 77, date: '2026-08-07', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '주식회사 아성', amount: -141000, type: 'refund', method: '체크카드', note: '결제 취소' },
+      { id: 78, date: '2026-08-07', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '주식회사 아성', amount: 144000, type: 'expense', method: '체크카드', note: '' },
+      { id: 79, date: '2026-08-10', category: '경비 - 기타경비', desc: '주유비', vendor: '한들주유소', amount: 100000, type: 'expense', method: '체크카드', note: '' },
+      { id: 80, date: '2026-08-12', category: '경비 - 홍보비', desc: '현장 사진 촬영 잔금', vendor: '유수진(에이스', amount: 660000, type: 'expense', method: '계좌이체', note: '잔금 50%' },
+      { id: 81, date: '2026-08-18', category: '경비 - 기타경비', desc: '주유비', vendor: '와이엠이십일유', amount: 150000, type: 'expense', method: '체크카드', note: '' },
+      { id: 82, date: '2026-08-18', category: '경비 - 기타경비', desc: '주유비', vendor: '와이엠이십일유', amount: 58000, type: 'expense', method: '체크카드', note: '' },
+      { id: 83, date: '2026-08-18', category: '경비 - 기타경비', desc: '주유비', vendor: '와이엠이십일유', amount: -150000, type: 'refund', method: '체크카드', note: '결제 취소' },
+      { id: 84, date: '2026-08-18', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '지방세입_수도', amount: 3770, type: 'expense', method: '계좌이체', note: '' },
+      { id: 85, date: '2026-08-18', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '지방세입_수도', amount: 5750, type: 'expense', method: '계좌이체', note: '' },
+      { id: 86, date: '2026-08-18', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '지방세입_수도', amount: 8740, type: 'expense', method: '계좌이체', note: '' },
+      { id: 87, date: '2026-08-18', category: '경비 - 유지 관리비', desc: '수도요금', vendor: '지방세입_수도', amount: 6730, type: 'expense', method: '계좌이체', note: '' },
+      { id: 88, date: '2026-08-18', category: '경비 - 기타경비', desc: '주유비', vendor: '대동주유소', amount: 100000, type: 'expense', method: '체크카드', note: '' },
+      { id: 89, date: '2026-08-19', category: '경비 - 홍보비', desc: '마을설명회 다과', vendor: '플라워드로터스', amount: 400000, type: 'expense', method: '체크카드', note: '' },
+      { id: 90, date: '2026-08-19', category: '경비 - 홍보비', desc: '마을설명회 다과', vendor: '베지나랑키친', amount: 53500, type: 'expense', method: '체크카드', note: '' },
+      { id: 91, date: '2026-08-19', category: '경비 - 유지 관리비', desc: '청소비', vendor: '한일클린환경', amount: 178000, type: 'expense', method: '체크카드', note: '' },
+      { id: 92, date: '2026-08-19', category: '경비 - 홍보비', desc: '마을설명회 다과', vendor: '양가네떡방', amount: 60000, type: 'expense', method: '체크카드', note: '' },
+      { id: 93, date: '2026-08-19', category: '경비 - 기타경비', desc: '주유비', vendor: '구광주유소', amount: 48000, type: 'expense', method: '체크카드', note: '' },
+      { id: 94, date: '2026-08-24', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '주식회사 아성', amount: 22000, type: 'expense', method: '체크카드', note: '' },
+      { id: 95, date: '2026-08-25', category: '경비 - 유지 관리비', desc: '보험비', vendor: '메리츠08-002', amount: 36650, type: 'expense', method: '계좌이체', note: '' },
+      { id: 96, date: '2026-08-25', category: '경비 - 기타경비', desc: '주유비', vendor: '덕유관광주유소', amount: 64000, type: 'expense', method: '체크카드', note: '' },
+      { id: 97, date: '2026-08-25', category: '경비 - 유지 관리비', desc: '통신요금', vendor: 'KT통신요금08', amount: 143270, type: 'expense', method: '계좌이체', note: '' },
+      { id: 98, date: '2026-08-25', category: '경비 - 유지 관리비', desc: '방역비', vendor: '세스코08', amount: 40000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 99, date: '2026-08-25', category: '경비 - 유지 관리비', desc: '방역비', vendor: '세스코08', amount: 40000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 100, date: '2026-08-25', category: '경비 - 유지 관리비', desc: '방역비', vendor: '세스코08', amount: 40000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 101, date: '2026-08-25', category: '경비 - 유지 관리비', desc: '방역비', vendor: '세스코08', amount: 40000, type: 'expense', method: '계좌이체', note: '' },
+      { id: 102, date: '2026-08-28', category: '경비 - 기타경비', desc: '공인증서 발급 수수료', vendor: '(주)블랭크(스', amount: 10000, type: 'expense', method: '계좌이체', note: '거창 신규 사업자' },
+      { id: 103, date: '2026-09-01', category: '인건비', desc: '인건비', vendor: '(주)블랭크', amount: 2200000, type: 'expense', method: '계좌이체', note: '4회차(26년 6월)' },
+      { id: 104, date: '2026-09-01', category: '경비 - 기타경비', desc: '주유비', vendor: '한들주유소', amount: 100000, type: 'expense', method: '체크카드', note: '' },
+      { id: 105, date: '2026-09-01', category: '외주비', desc: '용역비 2608', vendor: '012.박영민', amount: 2200300, type: 'expense', method: '계좌이체', note: '6회차(26년 8월)' },
+      { id: 106, date: '2026-09-01', category: '경비 - 기타경비', desc: '주유비', vendor: '한들주유소', amount: 100000, type: 'expense', method: '체크카드', note: '' },
+      { id: 107, date: '2026-09-04', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '주식회사 부농', amount: 55000, type: 'expense', method: '체크카드', note: '' },
+      { id: 108, date: '2026-09-04', category: '경비 - 기타경비', desc: '주유비', vendor: '스타주유소', amount: 100000, type: 'expense', method: '체크카드', note: '' },
+      { id: 109, date: '2026-09-08', category: '경비 - 기타경비', desc: '소방안전관리자 교육비', vendor: '공공기관', amount: 96000, type: 'expense', method: '체크카드', note: '' },
+      { id: 110, date: '2026-09-08', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '이케아코리아', amount: 332800, type: 'expense', method: '체크카드', note: '' },
+      { id: 111, date: '2026-09-09', category: '경비 - 기타경비', desc: '소방안전관리자 교육비', vendor: '공공기관', amount: 96000, type: 'expense', method: '체크카드', note: '' },
+      { id: 112, date: '2026-09-10', category: '경비 - 유지 관리비', desc: '관리용품', vendor: '위천제일벽돌', amount: 8000, type: 'expense', method: '체크카드', note: '' },
+      { id: 113, date: '2026-09-10', category: '경비 - 기타경비', desc: '주유비', vendor: '와이엠이십일유', amount: 150000, type: 'expense', method: '체크카드', note: '' },
+      { id: 114, date: '2026-09-10', category: '경비 - 기타경비', desc: '주유비', vendor: '와이엠이십일유', amount: 54000, type: 'expense', method: '체크카드', note: '' },
+      { id: 115, date: '2026-09-10', category: '경비 - 기타경비', desc: '주유비', vendor: '와이엠이십일유', amount: -150000, type: 'refund', method: '체크카드', note: '결제 취소' },
+      { id: 116, date: '2026-09-10', category: '경비 - 기타경비', desc: '회의비', vendor: '플라워드로터스', amount: 11500, type: 'expense', method: '체크카드', note: '' },
+      { id: 117, date: '2026-09-15', category: '경비 - 유지 관리비', desc: '전기요금', vendor: '한국전력공사', amount: 442100, type: 'expense', method: '계좌이체', note: '' },
+      { id: 118, date: '2026-09-16', category: '외주비', desc: '용역비 2609', vendor: '박영민', amount: 2200000, type: 'expense', method: '계좌이체', note: '7회차(26년 9월)' },
+      { id: 119, date: '2026-09-16', category: '인건비', desc: '인건비', vendor: '(주)블랭크', amount: 2000000, type: 'expense', method: '계좌이체', note: '5회차(26년 7월)' },
+    ];
+
+    const CATEGORY_OPTIONS = [
+      '인건비',
+      '외주비',
+      '경비 - 브랜드 개발비',
+      '경비 - 프로그램 운영비',
+      '경비 - 홍보비',
+      '경비 - 유지 관리비',
+      '경비 - 기타경비',
+      '입금'
+    ];
+
+    const fmt = (n) => (n || 0).toLocaleString('ko-KR');
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('budget');
+      const [budgetItems, setBudgetItems] = useState(() => {
+        try {
+          const saved = localStorage.getItem('dal2sil_budget_v2');
+          return saved ? JSON.parse(saved) : INITIAL_BUDGET;
+        } catch { return INITIAL_BUDGET; }
+      });
+      const [transactions, setTransactions] = useState(() => {
+        try {
+          const saved = localStorage.getItem('dal2sil_tx_v2');
+          return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+        } catch { return INITIAL_TRANSACTIONS; }
+      });
+
+      const [search, setSearch] = useState('');
+      const [filterCat, setFilterCat] = useState('전체');
+      const [toast, setToast] = useState('');
+
+      // 모달 상태
+      const [txModal, setTxModal] = useState({ open: false, data: null });
+      const [budgetModal, setBudgetModal] = useState({ open: false, data: null });
+      const [confirmModal, setConfirmModal] = useState({ open: false, message: '', onConfirm: null });
+
+      useEffect(() => {
+        localStorage.setItem('dal2sil_budget_v2', JSON.stringify(budgetItems));
+      }, [budgetItems]);
+
+      useEffect(() => {
+        localStorage.setItem('dal2sil_tx_v2', JSON.stringify(transactions));
+      }, [transactions]);
+
+      const showToast = (msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(''), 2800);
+      };
+
+      // 요약 계산
+      const summary = useMemo(() => {
+        let totalIncome = 0;
+        let totalExpense = 0;
+        let expense2026 = 0;
+        let expense2027 = 0;
+
+        transactions.forEach(t => {
+          const yr = (t.date || '').slice(0, 4);
+          if (t.type === 'income' || t.category === '입금') {
+            totalIncome += Math.abs(Number(t.amount) || 0);
+          } else {
+            const amt = Number(t.amount) || 0;
+            totalExpense += amt;
+            if (yr === '2026') expense2026 += amt;
+            else if (yr === '2027') expense2027 += amt;
+          }
+        });
+
+        const balance = totalIncome - totalExpense;
+        const rate = totalIncome > 0 ? ((totalExpense / totalIncome) * 100).toFixed(1) : '0.0';
+        return { totalIncome, totalExpense, expense2026, expense2027, balance, rate };
+      }, [transactions]);
+
+      // 카테고리/비목별 사용액 계산
+      const getUsed = (category, item, year) => {
+        return transactions
+          .filter(t => {
+            if (t.type === 'income' || t.category === '입금') return false;
+            if (year && !(t.date || '').startsWith(String(year))) return false;
+            if (category === '인건비') return t.category === '인건비';
+            if (category === '외주비') return t.category === '외주비';
+            return t.category === `경비 - ${item}`;
+          })
+          .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+      };
+
+      // 예산 집계 (엑셀 수식 100% 일치)
+      const calc = useMemo(() => {
+        const sumByCat = (cat) => {
+          const rows = budgetItems.filter(b => b.category === cat);
+          const b26 = rows.reduce((s, r) => s + Number(r.b2026 || 0), 0);
+          const b27 = rows.reduce((s, r) => s + Number(r.b2027 || 0), 0);
+          return { rows, b26, b27, tot: b26 + b27 };
         };
 
-        const STORAGE_KEY_BUDGETS = 'dal2sil_budgets_v2';
-        const STORAGE_KEY_TX = 'dal2sil_transactions_v2';
+        const labor = sumByCat('인건비');
+        const outsource = sumByCat('외주비');
+        const expense = sumByCat('경비');
 
-        // --- 초기 예산 데이터 ---
-        const INITIAL_BUDGETS = [
-            { id: 'b1', category: '인건비', subCategory: '총괄', name: '사업 총괄', amount2026: 6000000, amount2027: 6000000 },
-            { id: 'b2', category: '인건비', subCategory: '관리자', name: '운영 관리', amount2026: 9000000, amount2027: 9000000 },
-            { id: 'b3', category: '인건비', subCategory: '기획자', name: '콘텐츠 및 홍보 기획', amount2026: 9000000, amount2027: 9000000 },
-            
-            { id: 'b4', category: '외주비', subCategory: '현장 총괄', name: '현장 총괄', amount2026: 6000000, amount2027: 6000000 },
-            { id: 'b5', category: '외주비', subCategory: '현장 관리자', name: '현장 관리', amount2026: 9000000, amount2027: 9000000 },
-            { id: 'b6', category: '외주비', subCategory: '현장 운영자', name: '현장 운영', amount2026: 9000000, amount2027: 9000000 },
-            
-            { id: 'b7', category: '경비', subCategory: '브랜드 개발비', name: '브랜드 개발', amount2026: 6000000, amount2027: 0 },
-            { id: 'b8', category: '경비', subCategory: '프로그램 운영비', name: '상시', amount2026: 1200000, amount2027: 1200000 },
-            { id: 'b9', category: '경비', subCategory: '프로그램 운영비', name: '기획', amount2026: 10000000, amount2027: 0 },
-            { id: 'b10', category: '경비', subCategory: '홍보비', name: '상시', amount2026: 1200000, amount2027: 1200000 },
-            { id: 'b11', category: '경비', subCategory: '홍보비', name: '기획', amount2026: 10000000, amount2027: 0 },
-            { id: 'b12', category: '경비', subCategory: '유지 관리비', name: '공간 운영비용', amount2026: 19200000, amount2027: 19200000 },
-            { id: 'b13', category: '경비', subCategory: '기타경비', name: '관련 경비', amount2026: 1464000, amount2027: 1464000 },
-        ];
+        const net26 = labor.b26 + outsource.b26 + expense.b26;
+        const net27 = labor.b27 + outsource.b27 + expense.b27;
+        const netTot = net26 + net27;
 
-        // --- 최종 정리된 사용내역 119건 ---
-        // (budgetId: 'income' = 수입/입금, 'cat_인건비' = 인건비 통합, 'cat_외주비' = 외주비 통합, 음수 amount = 결제 취소)
-        const INITIAL_TRANSACTIONS = [
-            { id: 't1', no: 1, date: '2026-02-13', time: '11:04:19', budgetId: 'income', description: '사업비', merchant: '', amount: 115472000, method: '', note: '사업비 입금', isIncome: true },
-            { id: 't2', no: 2, date: '2026-03-21', time: '03:14:08', budgetId: 'income', description: '이자', merchant: '', amount: 9649, method: '', note: '이자', isIncome: true },
-            { id: 't3', no: 3, date: '2026-03-25', time: '17:08:14', budgetId: 'cat_인건비', description: '인건비 2603', merchant: '㈜블랭크', amount: 2200000, method: '계좌이체', note: '1회차(26년 3월)' },
-            { id: 't4', no: 4, date: '2026-03-30', time: '14:08:59', budgetId: 'cat_외주비', description: '용역비 2603', merchant: '덕유산 고라니들', amount: 2200000, method: '계좌이체', note: '1회차(26년 3월)' },
-            { id: 't5', no: 5, date: '2026-03-30', time: '14:10:59', budgetId: 'b7', description: '브랜드 개발비 선금', merchant: '씨클레프', amount: 3300000, method: '계좌이체', note: '선금 50%' },
-            { id: 't6', no: 6, date: '2026-04-30', time: '11:18:54', budgetId: 'b12', description: '전기요금', merchant: '한전', amount: 116530, method: '계좌이체', note: '' },
-            { id: 't7', no: 7, date: '2026-04-30', time: '11:18:55', budgetId: 'b12', description: '전기요금', merchant: '한전', amount: 102210, method: '계좌이체', note: '' },
-            { id: 't8', no: 8, date: '2026-04-30', time: '11:18:57', budgetId: 'b12', description: '전기요금', merchant: '한전', amount: 108190, method: '계좌이체', note: '' },
-            { id: 't9', no: 9, date: '2026-04-30', time: '11:18:59', budgetId: 'b12', description: '전기요금', merchant: '한전', amount: 118150, method: '계좌이체', note: '' },
-            { id: 't10', no: 10, date: '2026-04-30', time: '11:18:59', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 1880, method: '계좌이체', note: '' },
-            { id: 't11', no: 11, date: '2026-04-30', time: '11:18:59', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 1880, method: '계좌이체', note: '' },
-            { id: 't12', no: 12, date: '2026-04-30', time: '11:18:59', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 1880, method: '계좌이체', note: '' },
-            { id: 't13', no: 13, date: '2026-04-30', time: '11:19:00', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 900, method: '계좌이체', note: '' },
-            { id: 't14', no: 14, date: '2026-05-01', time: '17:40:24', budgetId: 'b12', description: '현장관리', merchant: '주식회사 부농', amount: 53000, method: '체크카드', note: '' },
-            { id: 't15', no: 15, date: '2026-05-02', time: '14:25:10', budgetId: 'b12', description: '현장관리', merchant: '위천제일벽돌', amount: 44000, method: '체크카드', note: '' },
-            { id: 't16', no: 16, date: '2026-05-06', time: '15:57:34', budgetId: 'b12', description: '관리용품', merchant: '쿠팡', amount: 71800, method: '체크카드', note: '' },
-            { id: 't17', no: 17, date: '2026-05-11', time: '16:16:26', budgetId: 'b12', description: '관리용품', merchant: '쿠팡', amount: 272900, method: '체크카드', note: '' },
-            { id: 't18', no: 18, date: '2026-05-18', time: '20:45:16', budgetId: 'cat_외주비', description: '용역비 2604', merchant: '덕유산 고라니들', amount: 2000000, method: '계좌이체', note: '2회차(26년 4월)' },
-            { id: 't19', no: 19, date: '2026-05-29', time: '11:23:49', budgetId: 'b12', description: '관리용품', merchant: '네이버', amount: 609500, method: '체크카드', note: '' },
-            { id: 't20', no: 20, date: '2026-05-29', time: '11:29:21', budgetId: 'b12', description: '관리용품', merchant: '네이버', amount: 347600, method: '체크카드', note: '' },
-            { id: 't21', no: 21, date: '2026-05-29', time: '17:24:51', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 900, method: '계좌이체', note: '' },
-            { id: 't22', no: 22, date: '2026-05-29', time: '17:24:52', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 1880, method: '계좌이체', note: '' },
-            { id: 't23', no: 23, date: '2026-05-29', time: '17:24:52', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 1880, method: '계좌이체', note: '' },
-            { id: 't24', no: 24, date: '2026-05-29', time: '17:24:52', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 1880, method: '계좌이체', note: '' },
-            { id: 't25', no: 25, date: '2026-06-09', time: '11:17:34', budgetId: 'b12', description: '전기요금', merchant: '한전', amount: 172520, method: '계좌이체', note: '' },
-            { id: 't26', no: 26, date: '2026-06-09', time: '11:17:35', budgetId: 'b12', description: '전기요금', merchant: '한전', amount: 195760, method: '계좌이체', note: '' },
-            { id: 't27', no: 27, date: '2026-06-09', time: '15:01:21', budgetId: 'cat_외주비', description: '용역비 2604', merchant: '덕유산 고라니들', amount: 200000, method: '계좌이체', note: '2회차 부가세' },
-            { id: 't28', no: 28, date: '2026-06-09', time: '15:01:22', budgetId: 'cat_외주비', description: '용역비 2605', merchant: '덕유산 고라니들', amount: 2200000, method: '계좌이체', note: '3회차(26년 5월)' },
-            { id: 't29', no: 29, date: '2026-06-12', time: '17:36:48', budgetId: 'b12', description: '관리용품', merchant: '쿠팡', amount: 286380, method: '체크카드', note: '' },
-            { id: 't30', no: 30, date: '2026-06-15', time: '17:05:50', budgetId: 'b12', description: '전기요금', merchant: '한전', amount: 166370, method: '계좌이체', note: '' },
-            { id: 't31', no: 31, date: '2026-06-15', time: '17:05:51', budgetId: 'b12', description: '전기요금', merchant: '한전', amount: 142000, method: '계좌이체', note: '' },
-            { id: 't32', no: 32, date: '2026-06-15', time: '17:09:22', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 4830, method: '계좌이체', note: '' },
-            { id: 't33', no: 33, date: '2026-06-15', time: '17:09:22', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 6810, method: '계좌이체', note: '' },
-            { id: 't34', no: 34, date: '2026-06-15', time: '17:09:22', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 3850, method: '계좌이체', note: '' },
-            { id: 't35', no: 35, date: '2026-06-15', time: '17:09:22', budgetId: 'b12', description: '수도요금', merchant: '거창군', amount: 4830, method: '계좌이체', note: '' },
-            { id: 't36', no: 36, date: '2026-06-17', time: '18:34:16', budgetId: 'b12', description: '관리용품', merchant: '쿠팡', amount: 155400, method: '체크카드', note: '' },
-            { id: 't37', no: 37, date: '2026-06-18', time: '14:07:23', budgetId: 'b12', description: '관리용품', merchant: '하늘호수', amount: 490000, method: '계좌이체', note: '' },
-            { id: 't38', no: 38, date: '2026-06-20', time: '04:48:32', budgetId: 'income', description: '이자', merchant: '', amount: 22536, method: '', note: '이자', isIncome: true },
-            { id: 't39', no: 39, date: '2026-06-22', time: '19:57:07', budgetId: 'b12', description: '관리용품', merchant: '쿠팡', amount: 37160, method: '체크카드', note: '' },
-            { id: 't40', no: 40, date: '2026-06-23', time: '17:25:28', budgetId: 'b12', description: '관리용품', merchant: '네이버', amount: 68540, method: '체크카드', note: '' },
-            { id: 't41', no: 41, date: '2026-06-25', time: '18:28:07', budgetId: 'b12', description: '관리용품', merchant: '쿠팡', amount: 302330, method: '체크카드', note: '' },
-            { id: 't42', no: 42, date: '2026-06-30', time: '17:48:39', budgetId: 'b12', description: '관리용품', merchant: '쿠팡', amount: 102360, method: '체크카드', note: '' },
-            { id: 't43', no: 43, date: '2026-06-30', time: '17:51:57', budgetId: 'b12', description: '관리용품', merchant: '오늘의집', amount: 118000, method: '체크카드', note: '' },
-            { id: 't44', no: 44, date: '2026-07-01', time: '15:34:19', budgetId: 'cat_외주비', description: '용역비 2606', merchant: '덕유산 고라니들', amount: 2200000, method: '계좌이체', note: '4회차(26년 6월)' },
-            { id: 't45', no: 45, date: '2026-07-01', time: '15:34:19', budgetId: 'b7', description: '브랜드 개발비 잔금', merchant: '씨클레프', amount: 3300000, method: '계좌이체', note: '잔금 50%' },
-            { id: 't46', no: 46, date: '2026-07-01', time: '16:11:39', budgetId: 'b12', description: '관리용품', merchant: '쿠팡', amount: 24180, method: '체크카드', note: '' },
-            { id: 't47', no: 47, date: '2026-07-02', time: '12:20:16', budgetId: 'b12', description: '관리용품', merchant: '이케아', amount: 45500, method: '체크카드', note: '' },
-            { id: 't48', no: 48, date: '2026-07-02', time: '18:44:19', budgetId: 'b12', description: '관리용품', merchant: '다이소', amount: 45000, method: '체크카드', note: '' },
-            { id: 't49', no: 49, date: '2026-07-03', time: '12:40:25', budgetId: 'b12', description: '관리용품', merchant: '다이소', amount: 8000, method: '체크카드', note: '' },
-            { id: 't50', no: 50, date: '2026-07-08', time: '15:24:44', budgetId: 'b12', description: '관리용품', merchant: '네이버', amount: 92400, method: '체크카드', note: '' },
-            { id: 't51', no: 51, date: '2026-07-08', time: '15:31:04', budgetId: 'b12', description: '관리용품', merchant: '태산인디고', amount: 14850, method: '체크카드', note: '' },
-            { id: 't52', no: 52, date: '2026-07-09', time: '13:56:53', budgetId: 'b13', description: '배송비', merchant: '카카오T비즈', amount: 41400, method: '체크카드', note: '' },
-            { id: 't53', no: 53, date: '2026-07-09', time: '21:49:14', budgetId: 'b12', description: '관리용품', merchant: '쿠팡', amount: 29900, method: '체크카드', note: '' },
-            { id: 't54', no: 54, date: '2026-07-15', time: '14:58:03', budgetId: 'cat_인건비', description: '인건비', merchant: '(주)블랭크', amount: 2200000, method: '계좌이체', note: '2회차(26년 4월)' },
-            { id: 't55', no: 55, date: '2026-07-15', time: '15:31:19', budgetId: 'b11', description: '현장 사진 촬영 선금', merchant: '유수진(에이스', amount: 660000, method: '계좌이체', note: '선금 50%' },
-            { id: 't56', no: 56, date: '2026-07-16', time: '10:51:58', budgetId: 'b13', description: '주유비', merchant: '거창대로주유소', amount: 100000, method: '체크카드', note: '' },
-            { id: 't57', no: 57, date: '2026-07-23', time: '10:39:27', budgetId: 'b12', description: '보험비', merchant: '메리츠화재해상', amount: 36650, method: '계좌이체', note: '' },
-            { id: 't58', no: 58, date: '2026-07-23', time: '11:21:10', budgetId: 'b12', description: '보험비', merchant: '메리츠화재해상', amount: 20000, method: '계좌이체', note: '' },
-            { id: 't59', no: 59, date: '2026-07-24', time: '15:09:32', budgetId: 'b11', description: '홍보 콘텐츠 선금', merchant: '심채린(리얼리', amount: 1650000, method: '계좌이체', note: '선금 50%' },
-            { id: 't60', no: 60, date: '2026-07-27', time: '18:40:18', budgetId: 'b12', description: '통신요금', merchant: 'KT통신요금07', amount: 201780, method: '계좌이체', note: '' },
-            { id: 't61', no: 61, date: '2026-07-27', time: '18:50:09', budgetId: 'b12', description: '방역비', merchant: '세스코07', amount: 40000, method: '계좌이체', note: '' },
-            { id: 't62', no: 62, date: '2026-07-27', time: '18:50:09', budgetId: 'b12', description: '방역비', merchant: '세스코07', amount: 40000, method: '계좌이체', note: '' },
-            { id: 't63', no: 63, date: '2026-07-27', time: '18:50:09', budgetId: 'b12', description: '방역비', merchant: '세스코07', amount: 40000, method: '계좌이체', note: '' },
-            { id: 't64', no: 64, date: '2026-07-27', time: '18:50:09', budgetId: 'b12', description: '방역비', merchant: '세스코07', amount: 40000, method: '계좌이체', note: '' },
-            { id: 't65', no: 65, date: '2026-07-29', time: '14:03:48', budgetId: 'b12', description: '관리용품', merchant: '주식회사 아성', amount: 24000, method: '체크카드', note: '' },
-            { id: 't66', no: 66, date: '2026-07-29', time: '14:11:51', budgetId: 'b12', description: '관리용품', merchant: '주식회사 아성', amount: 141000, method: '체크카드', note: '' },
-            { id: 't67', no: 67, date: '2026-07-30', time: '18:31:21', budgetId: 'b12', description: '관리용품', merchant: '거창사과원예농', amount: 100000, method: '체크카드', note: '' },
-            { id: 't68', no: 68, date: '2026-07-31', time: '14:51:36', budgetId: 'b12', description: '전기요금', merchant: '한전(거창군수', amount: 227850, method: '계좌이체', note: '' },
-            { id: 't69', no: 69, date: '2026-07-31', time: '14:51:38', budgetId: 'b12', description: '전기요금', merchant: '한전(거창군수', amount: 238980, method: '계좌이체', note: '' },
-            { id: 't70', no: 70, date: '2026-07-31', time: '14:51:39', budgetId: 'b12', description: '전기요금', merchant: '한전(거창군수', amount: 184250, method: '계좌이체', note: '' },
-            { id: 't71', no: 71, date: '2026-07-31', time: '14:51:40', budgetId: 'b12', description: '전기요금', merchant: '한전(거창군수', amount: 190930, method: '계좌이체', note: '' },
-            { id: 't72', no: 72, date: '2026-08-03', time: '07:33:55', budgetId: 'cat_인건비', description: '인건비', merchant: '(주)블랭크', amount: 2200000, method: '계좌이체', note: '3회차(26년 5월)' },
-            { id: 't73', no: 73, date: '2026-08-03', time: '08:56:27', budgetId: 'cat_외주비', description: '용역비 2607', merchant: '덕유산 고라니들', amount: 2200300, method: '계좌이체', note: '5회차(26년 7월)' },
-            { id: 't74', no: 74, date: '2026-08-03', time: '16:54:22', budgetId: 'b13', description: '주유비', merchant: '거창대로주유소', amount: 100000, method: '체크카드', note: '' },
-            { id: 't75', no: 75, date: '2026-08-03', time: '17:28:52', budgetId: 'b12', description: '관리용품', merchant: '아트비', amount: 21330, method: '체크카드', note: '' },
-            { id: 't76', no: 76, date: '2026-08-04', time: '16:04:46', budgetId: 'b12', description: '전기안전검사비', merchant: '한국전기안전공', amount: 126940, method: '체크카드', note: '' },
-            { id: 't77', no: 77, date: '2026-08-07', time: '10:41:46', budgetId: 'b12', description: '관리용품', merchant: '주식회사 아성', amount: -141000, method: '체크카드', note: '결제 취소' },
-            { id: 't78', no: 78, date: '2026-08-07', time: '10:43:30', budgetId: 'b12', description: '관리용품', merchant: '주식회사 아성', amount: 144000, method: '체크카드', note: '' },
-            { id: 't79', no: 79, date: '2026-08-10', time: '11:10:34', budgetId: 'b13', description: '주유비', merchant: '한들주유소', amount: 100000, method: '체크카드', note: '' },
-            { id: 't80', no: 80, date: '2026-08-12', time: '14:49:37', budgetId: 'b11', description: '현장 사진 촬영 잔금', merchant: '유수진(에이스', amount: 660000, method: '계좌이체', note: '잔금 50%' },
-            { id: 't81', no: 81, date: '2026-08-18', time: '12:31:41', budgetId: 'b13', description: '주유비', merchant: '와이엠이십일유', amount: 150000, method: '체크카드', note: '' },
-            { id: 't82', no: 82, date: '2026-08-18', time: '12:33:18', budgetId: 'b13', description: '주유비', merchant: '와이엠이십일유', amount: 58000, method: '체크카드', note: '' },
-            { id: 't83', no: 83, date: '2026-08-18', time: '12:33:19', budgetId: 'b13', description: '주유비', merchant: '와이엠이십일유', amount: -150000, method: '체크카드', note: '결제 취소' },
-            { id: 't84', no: 84, date: '2026-08-18', time: '17:28:50', budgetId: 'b12', description: '수도요금', merchant: '지방세입_수도', amount: 3770, method: '계좌이체', note: '' },
-            { id: 't85', no: 85, date: '2026-08-18', time: '17:30:06', budgetId: 'b12', description: '수도요금', merchant: '지방세입_수도', amount: 5750, method: '계좌이체', note: '' },
-            { id: 't86', no: 86, date: '2026-08-18', time: '17:31:16', budgetId: 'b12', description: '수도요금', merchant: '지방세입_수도', amount: 8740, method: '계좌이체', note: '' },
-            { id: 't87', no: 87, date: '2026-08-18', time: '17:33:01', budgetId: 'b12', description: '수도요금', merchant: '지방세입_수도', amount: 6730, method: '계좌이체', note: '' },
-            { id: 't88', no: 88, date: '2026-08-18', time: '22:05:00', budgetId: 'b13', description: '주유비', merchant: '대동주유소', amount: 100000, method: '체크카드', note: '' },
-            { id: 't89', no: 89, date: '2026-08-19', time: '13:47:26', budgetId: 'b11', description: '마을설명회 다과', merchant: '플라워드로터스', amount: 400000, method: '체크카드', note: '' },
-            { id: 't90', no: 90, date: '2026-08-19', time: '13:47:51', budgetId: 'b11', description: '마을설명회 다과', merchant: '베지나랑키친', amount: 53500, method: '체크카드', note: '' },
-            { id: 't91', no: 91, date: '2026-08-19', time: '17:42:58', budgetId: 'b12', description: '청소비', merchant: '한일클린환경', amount: 178000, method: '체크카드', note: '' },
-            { id: 't92', no: 92, date: '2026-08-19', time: '18:18:03', budgetId: 'b11', description: '마을설명회 다과', merchant: '양가네떡방', amount: 60000, method: '체크카드', note: '' },
-            { id: 't93', no: 93, date: '2026-08-19', time: '19:30:03', budgetId: 'b13', description: '주유비', merchant: '구광주유소', amount: 48000, method: '체크카드', note: '' },
-            { id: 't94', no: 94, date: '2026-08-24', time: '15:21:36', budgetId: 'b12', description: '관리용품', merchant: '주식회사 아성', amount: 22000, method: '체크카드', note: '' },
-            { id: 't95', no: 95, date: '2026-08-25', time: '07:18:17', budgetId: 'b12', description: '보험비', merchant: '메리츠08-002', amount: 36650, method: '계좌이체', note: '' },
-            { id: 't96', no: 96, date: '2026-08-25', time: '15:01:26', budgetId: 'b13', description: '주유비', merchant: '덕유관광주유소', amount: 64000, method: '체크카드', note: '' },
-            { id: 't97', no: 97, date: '2026-08-25', time: '18:34:59', budgetId: 'b12', description: '통신요금', merchant: 'KT통신요금08', amount: 143270, method: '계좌이체', note: '' },
-            { id: 't98', no: 98, date: '2026-08-25', time: '18:42:29', budgetId: 'b12', description: '방역비', merchant: '세스코08', amount: 40000, method: '계좌이체', note: '' },
-            { id: 't99', no: 99, date: '2026-08-25', time: '18:42:29', budgetId: 'b12', description: '방역비', merchant: '세스코08', amount: 40000, method: '계좌이체', note: '' },
-            { id: 't100', no: 100, date: '2026-08-25', time: '18:42:29', budgetId: 'b12', description: '방역비', merchant: '세스코08', amount: 40000, method: '계좌이체', note: '' },
-            { id: 't101', no: 101, date: '2026-08-25', time: '18:42:30', budgetId: 'b12', description: '방역비', merchant: '세스코08', amount: 40000, method: '계좌이체', note: '' },
-            { id: 't102', no: 102, date: '2026-08-28', time: '16:07:28', budgetId: 'b13', description: '공인증서 발급 수수료', merchant: '(주)블랭크(스', amount: 10000, method: '계좌이체', note: '거창 신규 사업자' },
-            { id: 't103', no: 103, date: '2026-09-01', time: '07:34:10', budgetId: 'cat_인건비', description: '인건비', merchant: '(주)블랭크', amount: 2200000, method: '계좌이체', note: '4회차(26년 6월)' },
-            { id: 't104', no: 104, date: '2026-09-01', time: '08:50:06', budgetId: 'b13', description: '주유비', merchant: '한들주유소', amount: 100000, method: '체크카드', note: '' },
-            { id: 't105', no: 105, date: '2026-09-01', time: '08:57:31', budgetId: 'cat_외주비', description: '용역비 2608', merchant: '012.박영민', amount: 2200300, method: '계좌이체', note: '6회차(26년 8월)' },
-            { id: 't106', no: 106, date: '2026-09-01', time: '09:35:53', budgetId: 'b13', description: '주유비', merchant: '한들주유소', amount: 100000, method: '체크카드', note: '' },
-            { id: 't107', no: 107, date: '2026-09-04', time: '12:23:27', budgetId: 'b12', description: '관리용품', merchant: '주식회사 부농', amount: 55000, method: '체크카드', note: '' },
-            { id: 't108', no: 108, date: '2026-09-04', time: '19:56:31', budgetId: 'b13', description: '주유비', merchant: '스타주유소', amount: 100000, method: '체크카드', note: '' },
-            { id: 't109', no: 109, date: '2026-09-08', time: '15:39:37', budgetId: 'b13', description: '소방안전관리자 교육비', merchant: '공공기관', amount: 96000, method: '체크카드', note: '' },
-            { id: 't110', no: 110, date: '2026-09-08', time: '15:49:03', budgetId: 'b12', description: '관리용품', merchant: '이케아코리아', amount: 332800, method: '체크카드', note: '' },
-            { id: 't111', no: 111, date: '2026-09-09', time: '16:39:48', budgetId: 'b13', description: '소방안전관리자 교육비', merchant: '공공기관', amount: 96000, method: '체크카드', note: '' },
-            { id: 't112', no: 112, date: '2026-09-10', time: '09:54:55', budgetId: 'b12', description: '관리용품', merchant: '위천제일벽돌', amount: 8000, method: '체크카드', note: '' },
-            { id: 't113', no: 113, date: '2026-09-10', time: '11:43:07', budgetId: 'b13', description: '주유비', merchant: '와이엠이십일유', amount: 150000, method: '체크카드', note: '' },
-            { id: 't114', no: 114, date: '2026-09-10', time: '11:44:34', budgetId: 'b13', description: '주유비', merchant: '와이엠이십일유', amount: 54000, method: '체크카드', note: '' },
-            { id: 't115', no: 115, date: '2026-09-10', time: '11:44:35', budgetId: 'b13', description: '주유비', merchant: '와이엠이십일유', amount: -150000, method: '체크카드', note: '결제 취소' },
-            { id: 't116', no: 116, date: '2026-09-10', time: '14:54:53', budgetId: 'b13', description: '회의비', merchant: '플라워드로터스', amount: 11500, method: '체크카드', note: '' },
-            { id: 't117', no: 117, date: '2026-09-15', time: '07:12:58', budgetId: 'b12', description: '전기요금', merchant: '한국전력공사', amount: 442100, method: '계좌이체', note: '' },
-            { id: 't118', no: 118, date: '2026-09-16', time: '12:27:29', budgetId: 'cat_외주비', description: '용역비 2609', merchant: '박영민', amount: 2200000, method: '계좌이체', note: '7회차(26년 9월)' },
-            { id: 't119', no: 119, date: '2026-09-16', time: '12:27:29', budgetId: 'cat_인건비', description: '인건비', merchant: '(주)블랭크', amount: 2000000, method: '계좌이체', note: '5회차(26년 7월)' },
-        ];
+        // 일반 관리비 (5%)
+        const admin26 = Math.round(net26 * 0.05);
+        const admin27 = Math.round(net27 * 0.05);
+        const adminTot = admin26 + admin27;
 
-        function Dal2silBudgetApp() {
-            const [activeTab, setActiveTab] = useState('budget');
-            
-            const [budgets, setBudgets] = useState(() => {
-                try {
-                    const saved = localStorage.getItem(STORAGE_KEY_BUDGETS);
-                    return saved ? JSON.parse(saved) : INITIAL_BUDGETS;
-                } catch { return INITIAL_BUDGETS; }
-            });
+        // 기업 이윤 (3%) : 엑셀 수식 = (순 원가 합계 + 일반 관리비) * 3%
+        const profit26 = Math.round((net26 + admin26) * 0.03);
+        const profit27 = Math.round((net27 + admin27) * 0.03);
+        const profitTot = profit26 + profit27;
 
-            const [transactions, setTransactions] = useState(() => {
-                try {
-                    const saved = localStorage.getItem(STORAGE_KEY_TX);
-                    return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
-                } catch { return INITIAL_TRANSACTIONS; }
-            });
+        // 운영 원가
+        const op26 = net26 + admin26 + profit26;
+        const op27 = net27 + admin27 + profit27;
+        const opTot = op26 + op27;
 
-            useEffect(() => {
-                try { localStorage.setItem(STORAGE_KEY_BUDGETS, JSON.stringify(budgets)); } catch {}
-            }, [budgets]);
+        // 부가 가치세 (10%)
+        const vat26 = Math.round(op26 * 0.1);
+        const vat27 = Math.round(op27 * 0.1);
+        const vatTot = Math.round(opTot * 0.1);
 
-            useEffect(() => {
-                try { localStorage.setItem(STORAGE_KEY_TX, JSON.stringify(transactions)); } catch {}
-            }, [transactions]);
+        // 총 운영비용
+        const tot26 = op26 + vat26;
+        const tot27 = op27 + vat27;
+        const totAll = opTot + vatTot;
 
-            // 필터 및 검색
-            const [searchTerm, setSearchTerm] = useState('');
-            const [filterBudgetId, setFilterBudgetId] = useState('all');
+        // 최종 운영비용 (만원 단위 이하 절사 -> 200,000,000원)
+        const final26 = Math.floor(tot26 / 10000) * 10000;
+        const final27 = Math.floor(tot27 / 10000) * 10000;
+        const finalAll = Math.floor(totAll / 100000) * 100000;
 
-            const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
-            const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
-            
-            const [editingBudget, setEditingBudget] = useState(null);
-            const [editingTransaction, setEditingTransaction] = useState(null);
+        // 사용액 집계
+        const usedLabor26 = getUsed('인건비', null, 2026);
+        const usedLabor27 = getUsed('인건비', null, 2027);
+        const usedOut26 = getUsed('외주비', null, 2026);
+        const usedOut27 = getUsed('외주비', null, 2027);
 
-            const [toastMessage, setToastMessage] = useState(null);
-            const [isXlsxLoaded, setIsXlsxLoaded] = useState(false);
-            const [confirmModal, setConfirmModal] = useState(null);
+        const expItems = ['브랜드 개발비', '프로그램 운영비', '홍보비', '유지 관리비', '기타경비'];
+        const usedExp26 = expItems.reduce((s, it) => s + getUsed('경비', it, 2026), 0);
+        const usedExp27 = expItems.reduce((s, it) => s + getUsed('경비', it, 2027), 0);
 
-            useEffect(() => {
-                if (window.XLSX) {
-                    setIsXlsxLoaded(true);
-                    return;
-                }
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-                script.async = true;
-                script.onload = () => setIsXlsxLoaded(true);
-                document.body.appendChild(script);
-            }, []);
+        return {
+          labor, outsource, expense,
+          net26, net27, netTot,
+          admin26, admin27, adminTot,
+          profit26, profit27, profitTot,
+          op26, op27, opTot,
+          vat26, vat27, vatTot,
+          tot26, tot27, totAll,
+          final26, final27, finalAll,
+          usedLabor26, usedLabor27,
+          usedOut26, usedOut27,
+          usedExp26, usedExp27
+        };
+      }, [budgetItems, transactions]);
 
-            const showToast = (msg, type = 'success') => {
-                setToastMessage({ msg, type });
-                setTimeout(() => setToastMessage(null), 3000);
-            };
-
-            const formatCurrency = (amount) => {
-                return new Intl.NumberFormat('ko-KR').format(Math.round(amount || 0));
-            };
-
-            const formatDate = (dateString) => {
-                if (!dateString) return '';
-                const date = new Date(dateString);
-                if (isNaN(date)) return dateString;
-                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            };
-
-            const generateId = () => Math.random().toString(36).substr(2, 9);
-
-            const getYearFromDate = (dateStr) => {
-                if (!dateStr) return null;
-                const match = String(dateStr).trim().match(/^(\d{4})/);
-                return match ? parseInt(match[1], 10) : null;
-            };
-
-            const handleResetData = () => {
-                setConfirmModal({
-                    title: '데이터 초기화',
-                    message: '모든 수정 내역을 지우고 초기 데이터(119건)로 되돌리시겠습니까?',
-                    onConfirm: () => {
-                        setBudgets(INITIAL_BUDGETS);
-                        setTransactions(INITIAL_TRANSACTIONS);
-                        localStorage.removeItem(STORAGE_KEY_BUDGETS);
-                        localStorage.removeItem(STORAGE_KEY_TX);
-                        showToast('초기 데이터로 복원되었습니다.');
-                        setConfirmModal(null);
-                    }
-                });
-            };
-
-            // --- 예산현황 집계 계산 ---
-            const budgetData = useMemo(() => {
-                let groupedItems = { '인건비': [], '외주비': [], '경비': [], '기타': [] };
-                let catDirectUsage = {
-                    '인건비': { used2026: 0, used2027: 0, usedAmount: 0 },
-                    '외주비': { used2026: 0, used2027: 0, usedAmount: 0 },
-                    '경비': { used2026: 0, used2027: 0, usedAmount: 0 },
-                    '기타': { used2026: 0, used2027: 0, usedAmount: 0 },
-                };
-
-                let netCostBudget2026 = 0; let netCostBudget2027 = 0; let netCostBudget = 0;
-                let netCostUsed = 0; let netCostUsed2026 = 0; let netCostUsed2027 = 0;
-                let totalIncome = 0;
-
-                // 카테고리 통합 지출 및 총 수입 계산
-                transactions.forEach(t => {
-                    const amt = Number(t.amount) || 0;
-                    if (t.isIncome || t.budgetId === 'income') {
-                        totalIncome += amt;
-                        return;
-                    }
-                    if (t.budgetId && t.budgetId.startsWith('cat_')) {
-                        const catName = t.budgetId.replace('cat_', '');
-                        const targetCat = catDirectUsage[catName] ? catName : '기타';
-                        const txYear = getYearFromDate(t.date);
-                        catDirectUsage[targetCat].usedAmount += amt;
-                        if (txYear === 2026) catDirectUsage[targetCat].used2026 += amt;
-                        else if (txYear === 2027) catDirectUsage[targetCat].used2027 += amt;
-
-                        netCostUsed += amt;
-                        if (txYear === 2026) netCostUsed2026 += amt;
-                        else if (txYear === 2027) netCostUsed2027 += amt;
-                    }
-                });
-
-                budgets.forEach(budget => {
-                    const amount2026 = Number(budget.amount2026) || 0;
-                    const amount2027 = Number(budget.amount2027) || 0;
-                    const totalAmount = amount2026 + amount2027;
-                    let used2026 = 0; let used2027 = 0; let usedAmount = 0;
-
-                    transactions
-                        .filter(t => !t.isIncome && t.budgetId === budget.id)
-                        .forEach(t => {
-                            const amt = Number(t.amount) || 0;
-                            usedAmount += amt;
-                            const txYear = getYearFromDate(t.date);
-                            if (txYear === 2026) used2026 += amt;
-                            else if (txYear === 2027) used2027 += amt;
-                        });
-                    
-                    const remaining = totalAmount - usedAmount;
-                    const rate = totalAmount > 0 ? ((usedAmount / totalAmount) * 100).toFixed(1) : 0;
-
-                    netCostBudget2026 += amount2026; netCostBudget2027 += amount2027; netCostBudget += totalAmount;
-                    netCostUsed += usedAmount; netCostUsed2026 += used2026; netCostUsed2027 += used2027;
-
-                    const enhancedBudget = { ...budget, amount: totalAmount, amount2026, amount2027, used2026, used2027, usedAmount, remaining, rate };
-                    
-                    if (groupedItems[budget.category]) groupedItems[budget.category].push(enhancedBudget);
-                    else groupedItems['기타'].push(enhancedBudget);
-                });
-
-                const calcSummary = (net) => {
-                    const adminFee = net * 0.05; const profit = net * 0.03; const opCost = net + adminFee + profit;
-                    const vat = opCost * 0.1; const total = opCost + vat; const final = Math.floor(total / 100000) * 100000;
-                    return { adminFee, profit, opCost, vat, total, final };
-                };
-
-                const s2026 = calcSummary(netCostBudget2026); const s2027 = calcSummary(netCostBudget2027);
-                const sTotal = calcSummary(netCostBudget);
-
-                return {
-                    groupedItems,
-                    catDirectUsage,
-                    totalIncome,
-                    currentBalance: totalIncome - netCostUsed,
-                    summary: {
-                        netCost: { b2026: netCostBudget2026, b2027: netCostBudget2027, budget: netCostBudget, used: netCostUsed, used2026: netCostUsed2026, used2027: netCostUsed2027 },
-                        adminFee: { b2026: s2026.adminFee, b2027: s2027.adminFee, budget: sTotal.adminFee },
-                        profit: { b2026: s2026.profit, b2027: s2027.profit, budget: sTotal.profit },
-                        opCost: { b2026: s2026.opCost, b2027: s2027.opCost, budget: sTotal.opCost },
-                        vat: { b2026: s2026.vat, b2027: s2027.vat, budget: sTotal.vat },
-                        total: { b2026: s2026.total, b2027: s2027.total, budget: sTotal.total },
-                        final: { b2026: s2026.final, b2027: s2027.final, budget: sTotal.final },
-                    }
-                };
-            }, [budgets, transactions]);
-
-            // 필터링된 사용내역
-            const filteredTransactions = useMemo(() => {
-                return transactions
-                    .filter(tx => {
-                        if (filterBudgetId !== 'all') {
-                            if (filterBudgetId === 'income' && !(tx.isIncome || tx.budgetId === 'income')) return false;
-                            if (filterBudgetId !== 'income' && tx.budgetId !== filterBudgetId) return false;
-                        }
-                        if (searchTerm.trim()) {
-                            const q = searchTerm.toLowerCase();
-                            return (
-                                (tx.description || '').toLowerCase().includes(q) ||
-                                (tx.merchant || '').toLowerCase().includes(q) ||
-                                (tx.note || '').toLowerCase().includes(q) ||
-                                (tx.date || '').includes(q)
-                            );
-                        }
-                        return true;
-                    })
-                    .sort((a, b) => {
-                        const dateDiff = new Date(b.date) - new Date(a.date);
-                        if (dateDiff !== 0) return dateDiff;
-                        return (b.no || 0) - (a.no || 0);
-                    });
-            }, [transactions, filterBudgetId, searchTerm]);
-
-            // 비목 라벨 변환기
-            const getBudgetLabel = (tx) => {
-                if (tx.isIncome || tx.budgetId === 'income') return { type: 'income', text: '수입 / 입금' };
-                if (tx.budgetId === 'cat_인건비') return { type: 'cat', text: '인건비 (통합)' };
-                if (tx.budgetId === 'cat_외주비') return { type: 'cat', text: '외주비 (통합)' };
-                const item = budgets.find(b => b.id === tx.budgetId);
-                if (item) return { type: 'item', category: item.category, subCategory: item.subCategory, name: item.name };
-                return { type: 'none', text: '미지정' };
-            };
-
-            // 엑셀 업로드
-            const handleFileUpload = (e) => {
-                if (!window.XLSX) {
-                    showToast('엑셀 처리 기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.', 'error');
-                    return;
-                }
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    try {
-                        const data = new Uint8Array(evt.target.result);
-                        const workbook = window.XLSX.read(data, { type: 'array' });
-                        const firstSheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheetName];
-                        const jsonData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                        
-                        let headerIdx = -1;
-                        for (let i = 0; i < Math.min(20, jsonData.length); i++) {
-                            const rowStr = (jsonData[i] || []).join('').replace(/\s/g, '');
-                            if (rowStr.includes('일자') || rowStr.includes('날짜') || rowStr.includes('거래일')) {
-                                headerIdx = i;
-                                break;
-                            }
-                        }
-
-                        if (headerIdx === -1) {
-                            showToast('엑셀 파일에서 올바른 헤더(날짜/일자 등)를 찾을 수 없습니다.', 'error');
-                            return;
-                        }
-
-                        const headers = jsonData[headerIdx];
-                        const rows = jsonData.slice(headerIdx + 1);
-                        const newTransactions = [];
-                        let successCount = 0;
-                        let maxNo = transactions.reduce((max, t) => Math.max(max, t.no || 0), 0);
-
-                        rows.forEach(row => {
-                            if (!row || row.length === 0) return;
-                            let dateStr = ''; let amount = 0; let desc = ''; let merchant = '';
-
-                            headers.forEach((header, idx) => {
-                                if (!header) return;
-                                const h = header.toString().replace(/\s/g, '');
-                                const cellValue = row[idx];
-                                if (cellValue === undefined || cellValue === null) return;
-
-                                if (h.includes('일자') || h.includes('날짜') || h.includes('거래일시')) {
-                                    if (typeof cellValue === 'number') {
-                                        const dateObj = new Date(Math.round((cellValue - 25569)*86400*1000));
-                                        dateStr = dateObj.toISOString().split('T')[0];
-                                    } else {
-                                        dateStr = String(cellValue).trim().split(' ')[0].replace(/\./g, '-');
-                                    }
-                                } else if (h.includes('출금') || h.includes('찾으신') || h.includes('사용금액') || h.includes('지급')) {
-                                    amount = Number(String(cellValue).replace(/,/g, ''));
-                                } else if (h.includes('적요') || h.includes('기재')) {
-                                    desc = String(cellValue);
-                                } else if (h.includes('내용') || h.includes('거래처') || h.includes('취급점') || h.includes('가맹점')) {
-                                    merchant = String(cellValue);
-                                }
-                            });
-
-                            if (amount > 0 && dateStr) {
-                                maxNo += 1;
-                                newTransactions.push({
-                                    id: generateId(),
-                                    no: maxNo,
-                                    date: dateStr,
-                                    budgetId: 'b12',
-                                    description: desc || '엑셀 자동입력',
-                                    merchant: merchant || '',
-                                    amount: amount,
-                                    method: '계좌이체',
-                                    note: '엑셀 업로드'
-                                });
-                                successCount++;
-                            }
-                        });
-
-                        if (successCount > 0) {
-                            setTransactions(prev => [...prev, ...newTransactions]);
-                            showToast(`${successCount}건의 사용내역이 성공적으로 연동되었습니다!`);
-                            setActiveTab('usage');
-                        } else {
-                            showToast('가져올 수 있는 출금 내역이 없습니다.', 'error');
-                        }
-                    } catch (err) {
-                        showToast('엑셀 파일 처리 중 오류가 발생했습니다.', 'error');
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-                e.target.value = null;
-            };
-
-            const handleBudgetSubmit = (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const amount2026 = Number(formData.get('amount2026').replace(/,/g, ''));
-                const amount2027 = Number(formData.get('amount2027').replace(/,/g, ''));
-                const budgetData = {
-                    id: editingBudget ? editingBudget.id : generateId(),
-                    category: formData.get('category'), subCategory: formData.get('subCategory'), name: formData.get('name'),
-                    amount2026: amount2026, amount2027: amount2027
-                };
-                if (editingBudget) {
-                    setBudgets(budgets.map(b => b.id === editingBudget.id ? budgetData : b));
-                    showToast('예산 항목이 수정되었습니다.');
-                } else {
-                    setBudgets([...budgets, budgetData]);
-                    showToast('새로운 예산 항목이 추가되었습니다.');
-                }
-                setIsBudgetModalOpen(false);
-            };
-
-            const handleTransactionSubmit = (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const budgetId = formData.get('budgetId');
-                const isIncome = budgetId === 'income';
-                const maxNo = transactions.reduce((max, t) => Math.max(max, t.no || 0), 0);
-                const txData = {
-                    id: editingTransaction ? editingTransaction.id : generateId(),
-                    no: editingTransaction ? editingTransaction.no : maxNo + 1,
-                    date: formData.get('date'),
-                    budgetId: budgetId,
-                    description: formData.get('description'),
-                    merchant: formData.get('merchant'),
-                    amount: Number(formData.get('amount').replace(/,/g, '')),
-                    method: formData.get('method'),
-                    note: formData.get('note'),
-                    isIncome: isIncome
-                };
-                if (editingTransaction) {
-                    setTransactions(transactions.map(t => t.id === editingTransaction.id ? txData : t));
-                    showToast('사용 내역이 수정되었습니다.');
-                } else {
-                    setTransactions([txData, ...transactions]);
-                    showToast('새로운 사용 내역이 추가되었습니다.');
-                }
-                setIsTransactionModalOpen(false);
-            };
-
-            const deleteBudget = (id) => {
-                setConfirmModal({
-                    title: '예산 항목 삭제',
-                    message: '이 예산 항목을 삭제하시겠습니까?',
-                    onConfirm: () => {
-                        setBudgets(prev => prev.filter(b => b.id !== id));
-                        showToast('예산 항목이 삭제되었습니다.');
-                        setConfirmModal(null);
-                    }
-                });
-            };
-
-            const deleteTransaction = (id) => {
-                setConfirmModal({
-                    title: '사용 내역 삭제',
-                    message: '이 사용 내역을 삭제하시겠습니까?',
-                    onConfirm: () => {
-                        setTransactions(prev => prev.filter(t => t.id !== id));
-                        showToast('사용 내역이 삭제되었습니다.');
-                        setConfirmModal(null);
-                    }
-                });
-            };
-
-            const CATEGORY_ORDER = ['인건비', '외주비', '경비', '기타'];
-
-            return (
-                <div className="min-h-screen pb-12">
-                    {toastMessage && (
-                        <div className={`fixed top-4 right-4 z-50 flex items-center px-4 py-3 rounded shadow-lg animate-fade-in-down ${
-                        toastMessage.type === 'error' ? 'bg-red-100 text-red-800 border-l-4 border-red-500' : 'bg-green-100 text-green-800 border-l-4 border-green-500'
-                        }`}>
-                            {toastMessage.type === 'error' ? <Icons.AlertCircle className="w-5 h-5 mr-2" /> : <Icons.CheckCircle2 className="w-5 h-5 mr-2" />}
-                            <span className="font-medium">{toastMessage.msg}</span>
-                        </div>
-                    )}
-
-                    {/* 상단 고정 영역 (헤더 + 핵심 요약 바 + 탭 네비게이션) */}
-                    <div className="sticky top-0 z-30 bg-stone-100/95 backdrop-blur-md border-b border-stone-200 shadow-sm">
-                        {/* 헤더 */}
-                        <header className="bg-white border-b border-stone-200">
-                            <div className="max-w-[1300px] mx-auto px-3 sm:px-6 lg:px-8">
-                                <div className="flex justify-between items-center h-12 sm:h-16">
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-stone-800 text-white p-1.5 sm:p-2 rounded-lg">
-                                            <Icons.PieChart className="w-4 h-4 sm:w-5 sm:h-5" />
-                                        </div>
-                                        <h1 className="text-base sm:text-xl font-bold tracking-tight text-stone-900">&lt;스테이달이실&gt; 예산관리</h1>
-                                    </div>
-                                    <button
-                                        onClick={handleResetData}
-                                        className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-800 bg-stone-100 hover:bg-stone-200 px-2.5 py-1.5 rounded-lg transition-colors"
-                                        title="초기 119건 데이터로 복원"
-                                    >
-                                        <Icons.RotateCcw className="w-3.5 h-3.5" />
-                                        <span className="hidden sm:inline">초기화</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </header>
-
-                        {/* 상단 핵심 요약 바 + 탭 네비게이션 */}
-                        <div className="max-w-[1300px] mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-4 space-y-2.5 sm:space-y-4">
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                                <div className="bg-white px-3 py-2 sm:p-4 rounded-xl border border-stone-200 shadow-sm">
-                                    <div className="text-[11px] sm:text-xs font-medium text-stone-500 mb-0.5 sm:mb-1 truncate">총 입금액 (사업비+이자)</div>
-                                    <div className="text-sm sm:text-xl font-bold text-blue-700">{formatCurrency(budgetData.totalIncome)}원</div>
-                                </div>
-                                <div className="bg-white px-3 py-2 sm:p-4 rounded-xl border border-stone-200 shadow-sm">
-                                    <div className="text-[11px] sm:text-xs font-medium text-stone-500 mb-0.5 sm:mb-1 truncate">실제 사용금액 (누적)</div>
-                                    <div className="text-sm sm:text-xl font-bold text-rose-600">{formatCurrency(budgetData.summary.netCost.used)}원</div>
-                                </div>
-                                <div className="bg-white px-3 py-2 sm:p-4 rounded-xl border border-stone-200 shadow-sm">
-                                    <div className="text-[11px] sm:text-xs font-medium text-stone-500 mb-0.5 sm:mb-1 truncate">현재 통장 잔액 (계산)</div>
-                                    <div className="text-sm sm:text-xl font-bold text-emerald-700">{formatCurrency(budgetData.currentBalance)}원</div>
-                                </div>
-                                <div className="bg-white px-3 py-2 sm:p-4 rounded-xl border border-stone-200 shadow-sm">
-                                    <div className="text-[11px] sm:text-xs font-medium text-stone-500 mb-0.5 sm:mb-1 truncate">26년 입금 대비 집행률</div>
-                                    <div className="text-sm sm:text-xl font-bold text-stone-900">
-                                        {budgetData.totalIncome > 0 ? ((budgetData.summary.netCost.used / budgetData.totalIncome) * 100).toFixed(1) : 0}%
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex space-x-1 bg-stone-200 p-1 rounded-xl overflow-x-auto no-scrollbar">
-                                {[
-                                    { id: 'budget', name: '예산현황', Icon: Icons.Wallet },
-                                    { id: 'usage', name: `사용내역 (${transactions.length})`, Icon: Icons.Receipt },
-                                    { id: 'file', name: '파일연동', Icon: Icons.Upload }
-                                ].map((tab) => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${
-                                            activeTab === tab.id ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900 hover:bg-stone-300/50'
-                                        }`}
-                                    >
-                                        <tab.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                        {tab.name}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <main className="max-w-[1300px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-                        <div className="animate-fade-in">
-                            {/* ===================== [예산현황 탭] ===================== */}
-                            {activeTab === 'budget' && (
-                                <div className="space-y-6">
-                                    <div className="bg-white rounded-xl shadow-sm border border-stone-300 overflow-hidden">
-                                        <div className="p-4 border-b border-stone-300 flex justify-between items-center bg-stone-50">
-                                            <div>
-                                                <h2 className="text-base sm:text-lg font-bold text-stone-800">2026-2027 운영 예산현황</h2>
-                                                <p className="text-xs text-stone-500 mt-0.5">사용내역 탭의 지출 데이터가 실시간으로 합산됩니다.</p>
-                                            </div>
-                                            <button onClick={() => { setEditingBudget(null); setIsBudgetModalOpen(true); }} className="flex items-center gap-1.5 bg-stone-800 hover:bg-stone-700 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap">
-                                                <Icons.Plus className="w-4 h-4" /> 항목 추가
-                                            </button>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-xs sm:text-sm text-left border-collapse min-w-[1180px]">
-                                                <thead>
-                                                    <tr className="bg-stone-200 text-stone-700 font-bold border-b border-stone-300">
-                                                        <th className="border border-stone-300 p-2.5 text-center w-20">구분</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-32">비목</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center">내용</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-28 bg-stone-100">2026 금액</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-28 bg-rose-50 text-rose-700">26년 사용</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-28 bg-stone-100">2027 금액</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-28 bg-rose-50 text-rose-700">27년 사용</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-28 bg-stone-200">합계 (원)</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-28 bg-rose-100 text-rose-800">총 사용금액</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-28 bg-emerald-50 text-emerald-700">잔여예산</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-16">집행률</th>
-                                                        <th className="border border-stone-300 p-2.5 text-center w-16">관리</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {CATEGORY_ORDER.map(category => {
-                                                        const items = budgetData.groupedItems[category];
-                                                        const direct = budgetData.catDirectUsage[category] || { used2026: 0, used2027: 0, usedAmount: 0 };
-                                                        if (!items || items.length === 0) return null;
-                                                        
-                                                        const itemsUsedSum = items.reduce((sum, item) => sum + item.usedAmount, 0);
-                                                        const hasDirect = direct.usedAmount !== 0;
-                                                        // 통합 정산만 있는 카테고리(인건비, 외주비)는 세부행에 0원을 띄우지 않고 사용금액/잔여/집행률 셀을 병합 표시
-                                                        const isMergedIntegrated = hasDirect && itemsUsedSum === 0;
-                                                        const showExtraDirectRow = hasDirect && itemsUsedSum !== 0;
-                                                        const rowSpanCount = items.length + (showExtraDirectRow ? 1 : 0);
-
-                                                        const subTotal2026 = items.reduce((sum, item) => sum + (item.amount2026 || 0), 0);
-                                                        const subTotal2027 = items.reduce((sum, item) => sum + (item.amount2027 || 0), 0);
-                                                        const subTotalBudget = items.reduce((sum, item) => sum + item.amount, 0);
-                                                        const subTotalUsed2026 = items.reduce((sum, item) => sum + (item.used2026 || 0), 0) + direct.used2026;
-                                                        const subTotalUsed2027 = items.reduce((sum, item) => sum + (item.used2027 || 0), 0) + direct.used2027;
-                                                        const subTotalUsed = itemsUsedSum + direct.usedAmount;
-                                                        const subTotalRemaining = subTotalBudget - subTotalUsed;
-                                                        const subTotalRate = subTotalBudget > 0 ? ((subTotalUsed / subTotalBudget) * 100).toFixed(1) : 0;
-
-                                                        return (
-                                                            <React.Fragment key={category}>
-                                                                {items.map((item, index) => (
-                                                                    <tr key={item.id} className="hover:bg-stone-50 transition-colors">
-                                                                        {index === 0 && <td rowSpan={rowSpanCount} className="border border-stone-300 p-2.5 text-center font-bold bg-stone-100 align-middle">{category}</td>}
-                                                                        <td className="border border-stone-300 p-2.5 text-center font-medium text-stone-700">{item.subCategory}</td>
-                                                                        <td className="border border-stone-300 p-2.5">{item.name}</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right bg-stone-50/50">{formatCurrency(item.amount2026 || 0)}</td>
-                                                                        {isMergedIntegrated ? (
-                                                                            index === 0 && (
-                                                                                <td rowSpan={items.length} className="border border-stone-300 p-2.5 text-right bg-amber-50/40 text-rose-600 font-bold align-middle">
-                                                                                    <div>{formatCurrency(direct.used2026)}</div>
-                                                                                    <div className="text-[10px] font-normal text-amber-700 mt-0.5">{category} 통합정산</div>
-                                                                                </td>
-                                                                            )
-                                                                        ) : (
-                                                                            <td className="border border-stone-300 p-2.5 text-right text-rose-500">{formatCurrency(item.used2026)}</td>
-                                                                        )}
-                                                                        <td className="border border-stone-300 p-2.5 text-right bg-stone-50/50">{formatCurrency(item.amount2027 || 0)}</td>
-                                                                        {isMergedIntegrated ? (
-                                                                            index === 0 && (
-                                                                                <td rowSpan={items.length} className="border border-stone-300 p-2.5 text-right bg-amber-50/40 text-rose-600 font-bold align-middle">
-                                                                                    {formatCurrency(direct.used2027)}
-                                                                                </td>
-                                                                            )
-                                                                        ) : (
-                                                                            <td className="border border-stone-300 p-2.5 text-right text-rose-500">{formatCurrency(item.used2027)}</td>
-                                                                        )}
-                                                                        <td className="border border-stone-300 p-2.5 text-right bg-stone-100 font-bold">{formatCurrency(item.amount)}</td>
-                                                                        {isMergedIntegrated ? (
-                                                                            index === 0 && (
-                                                                                <>
-                                                                                    <td rowSpan={items.length} className="border border-stone-300 p-2.5 text-right bg-amber-50/40 text-rose-700 font-bold align-middle">
-                                                                                        <div>{formatCurrency(subTotalUsed)}</div>
-                                                                                        <div className="text-[10px] font-normal text-amber-700 mt-0.5">통합 합계</div>
-                                                                                    </td>
-                                                                                    <td rowSpan={items.length} className={`border border-stone-300 p-2.5 text-right bg-amber-50/40 font-bold align-middle ${subTotalRemaining < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
-                                                                                        {formatCurrency(subTotalRemaining)}
-                                                                                    </td>
-                                                                                    <td rowSpan={items.length} className="border border-stone-300 p-2.5 text-right bg-amber-50/40 font-bold text-stone-800 align-middle">
-                                                                                        {subTotalRate}%
-                                                                                    </td>
-                                                                                </>
-                                                                            )
-                                                                        ) : (
-                                                                            <>
-                                                                                <td className="border border-stone-300 p-2.5 text-right text-rose-600 font-bold">{formatCurrency(item.usedAmount)}</td>
-                                                                                <td className={`border border-stone-300 p-2.5 text-right ${item.remaining < 0 ? 'text-red-600 font-bold' : 'text-emerald-600'}`}>{formatCurrency(item.remaining)}</td>
-                                                                                <td className="border border-stone-300 p-2.5 text-right">{item.rate}%</td>
-                                                                            </>
-                                                                        )}
-                                                                        <td className="border border-stone-300 p-2">
-                                                                            <div className="flex justify-center gap-1">
-                                                                                <button onClick={() => { setEditingBudget(item); setIsBudgetModalOpen(true); }} className="text-stone-400 hover:text-blue-600 p-1"><Icons.Edit2 className="w-3.5 h-3.5" /></button>
-                                                                                <button onClick={() => deleteBudget(item.id)} className="text-stone-400 hover:text-red-600 p-1"><Icons.Trash2 className="w-3.5 h-3.5" /></button>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                                {showExtraDirectRow && (
-                                                                    <tr className="bg-amber-50/50 text-stone-700 italic">
-                                                                        <td className="border border-stone-300 p-2.5 text-center font-medium text-amber-800">{category} 통합</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-xs text-stone-500">월별 통합 정산 지출액</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-600 font-medium">{formatCurrency(direct.used2026)}</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-600 font-medium">{formatCurrency(direct.used2027)}</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-600 font-bold">{formatCurrency(direct.usedAmount)}</td>
-                                                                        <td colSpan={3} className="border border-stone-300 p-2.5 text-center text-xs text-stone-400">소계에 자동 합산</td>
-                                                                    </tr>
-                                                                )}
-                                                                <tr className="bg-blue-50/70 font-bold border border-stone-300">
-                                                                    <td colSpan={3} className="border border-stone-300 p-2.5 text-center text-blue-700">{category} 소계</td>
-                                                                    <td className="border border-stone-300 p-2.5 text-right text-blue-700">{formatCurrency(subTotal2026)}</td>
-                                                                    <td className="border border-stone-300 p-2.5 text-right text-rose-600">{formatCurrency(subTotalUsed2026)}</td>
-                                                                    <td className="border border-stone-300 p-2.5 text-right text-blue-700">{formatCurrency(subTotal2027)}</td>
-                                                                    <td className="border border-stone-300 p-2.5 text-right text-rose-600">{formatCurrency(subTotalUsed2027)}</td>
-                                                                    <td className="border border-stone-300 p-2.5 text-right text-blue-700">{formatCurrency(subTotalBudget)}</td>
-                                                                    <td className="border border-stone-300 p-2.5 text-right text-rose-700">{formatCurrency(subTotalUsed)}</td>
-                                                                    <td className="border border-stone-300 p-2.5 text-right text-emerald-700">{formatCurrency(subTotalRemaining)}</td>
-                                                                    <td className="border border-stone-300 p-2.5 text-right text-blue-700">{subTotalRate}%</td>
-                                                                    <td className="border border-stone-300 p-2.5"></td>
-                                                                </tr>
-                                                            </React.Fragment>
-                                                        );
-                                                    })}
-
-                                                    <tr className="bg-stone-100 font-bold border-t-2 border-stone-400">
-                                                        <td colSpan={3} className="border border-stone-300 p-2.5 text-center text-stone-800">순 원가 합계</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-800">{formatCurrency(budgetData.summary.netCost.b2026)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-700">{formatCurrency(budgetData.summary.netCost.used2026)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-800">{formatCurrency(budgetData.summary.netCost.b2027)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-700">{formatCurrency(budgetData.summary.netCost.used2027)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-800">{formatCurrency(budgetData.summary.netCost.budget)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-700">{formatCurrency(budgetData.summary.netCost.used)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-emerald-700">{formatCurrency(budgetData.summary.netCost.budget - budgetData.summary.netCost.used)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-800">
-                                                            {budgetData.summary.netCost.budget > 0 ? ((budgetData.summary.netCost.used / budgetData.summary.netCost.budget) * 100).toFixed(1) : 0}%
-                                                        </td>
-                                                        <td className="border border-stone-300 p-2.5"></td>
-                                                    </tr>
-                                                    <tr className="bg-stone-50 font-medium">
-                                                        <td colSpan={3} className="border border-stone-300 p-2.5 text-center text-stone-600">일반 관리비 (5%)</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-600">{formatCurrency(budgetData.summary.adminFee.b2026)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-600">{formatCurrency(budgetData.summary.adminFee.b2027)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-600">{formatCurrency(budgetData.summary.adminFee.budget)}</td>
-                                                        <td colSpan={4} className="border border-stone-300 p-2.5"></td>
-                                                    </tr>
-                                                    <tr className="bg-stone-50 font-medium">
-                                                        <td colSpan={3} className="border border-stone-300 p-2.5 text-center text-stone-600">기업 이윤 (3%)</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-600">{formatCurrency(budgetData.summary.profit.b2026)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-600">{formatCurrency(budgetData.summary.profit.b2027)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-600">{formatCurrency(budgetData.summary.profit.budget)}</td>
-                                                        <td colSpan={4} className="border border-stone-300 p-2.5"></td>
-                                                    </tr>
-                                                    <tr className="bg-blue-100 font-bold">
-                                                        <td colSpan={3} className="border border-stone-300 p-2.5 text-center text-blue-800">운영 원가</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-blue-800">{formatCurrency(budgetData.summary.opCost.b2026)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-blue-800">{formatCurrency(budgetData.summary.opCost.b2027)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-blue-800">{formatCurrency(budgetData.summary.opCost.budget)}</td>
-                                                        <td colSpan={4} className="border border-stone-300 p-2.5"></td>
-                                                    </tr>
-                                                    <tr className="bg-stone-50 font-medium">
-                                                        <td colSpan={3} className="border border-stone-300 p-2.5 text-center text-stone-600">부가 가치세 (10%)</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-600">{formatCurrency(budgetData.summary.vat.b2026)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-600">{formatCurrency(budgetData.summary.vat.b2027)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-400">-</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-stone-600">{formatCurrency(budgetData.summary.vat.budget)}</td>
-                                                        <td colSpan={4} className="border border-stone-300 p-2.5"></td>
-                                                    </tr>
-                                                    <tr className="bg-blue-100/50 font-bold">
-                                                        <td colSpan={3} className="border border-stone-300 p-2.5 text-center text-blue-900">총 운영비용</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-blue-900">{formatCurrency(budgetData.summary.total.b2026)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-700">{formatCurrency(budgetData.summary.netCost.used2026)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-blue-900">{formatCurrency(budgetData.summary.total.b2027)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-700">{formatCurrency(budgetData.summary.netCost.used2027)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-blue-900">{formatCurrency(budgetData.summary.total.budget)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-rose-700">{formatCurrency(budgetData.summary.netCost.used)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-emerald-700">{formatCurrency(budgetData.summary.total.budget - budgetData.summary.netCost.used)}</td>
-                                                        <td className="border border-stone-300 p-2.5 text-right text-blue-900">
-                                                            {budgetData.summary.total.budget > 0 ? ((budgetData.summary.netCost.used / budgetData.summary.total.budget) * 100).toFixed(1) : 0}%
-                                                        </td>
-                                                        <td className="border border-stone-300 p-2.5"></td>
-                                                    </tr>
-                                                    <tr className="bg-red-50 font-bold border-b-2 border-stone-400">
-                                                        <td colSpan={3} className="border border-stone-300 p-3 text-center text-red-600 text-sm sm:text-base">최종 운영비용 (만원 단위 절사)</td>
-                                                        <td className="border border-stone-300 p-3 text-right text-red-600 text-sm sm:text-base">{formatCurrency(budgetData.summary.final.b2026)}</td>
-                                                        <td className="border border-stone-300 p-3 text-right text-rose-600 text-sm sm:text-base">{formatCurrency(budgetData.summary.netCost.used2026)}</td>
-                                                        <td className="border border-stone-300 p-3 text-right text-red-600 text-sm sm:text-base">{formatCurrency(budgetData.summary.final.b2027)}</td>
-                                                        <td className="border border-stone-300 p-3 text-right text-rose-600 text-sm sm:text-base">{formatCurrency(budgetData.summary.netCost.used2027)}</td>
-                                                        <td className="border border-stone-300 p-3 text-right text-red-600 text-sm sm:text-base">{formatCurrency(budgetData.summary.final.budget)}</td>
-                                                        <td className="border border-stone-300 p-3 text-right text-rose-700 text-sm sm:text-base">{formatCurrency(budgetData.summary.netCost.used)}</td>
-                                                        <td className="border border-stone-300 p-3 text-right text-emerald-700 text-sm sm:text-base">{formatCurrency(budgetData.summary.final.budget - budgetData.summary.netCost.used)}</td>
-                                                        <td className="border border-stone-300 p-3 text-right text-red-600 text-sm sm:text-base">
-                                                            {budgetData.summary.final.budget > 0 ? ((budgetData.summary.netCost.used / budgetData.summary.final.budget) * 100).toFixed(1) : 0}%
-                                                        </td>
-                                                        <td className="border border-stone-300 p-3"></td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* ===================== [사용내역 탭] ===================== */}
-                            {activeTab === 'usage' && (
-                                <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden min-h-[500px]">
-                                    <div className="p-4 sm:p-5 border-b border-stone-100 flex flex-col gap-4 bg-stone-50/50">
-                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                            <div>
-                                                <h2 className="text-lg font-bold text-stone-800">전체 사용 내역</h2>
-                                                <p className="text-xs sm:text-sm text-stone-500 mt-0.5">총 {filteredTransactions.length}건이 표시되고 있습니다.</p>
-                                            </div>
-                                            <div className="flex gap-2 w-full sm:w-auto">
-                                                <button onClick={() => setActiveTab('file')} className="flex-1 sm:flex-none flex justify-center items-center gap-1.5 bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-                                                    <Icons.FileSpreadsheet className="w-4 h-4" /> 엑셀 업로드
-                                                </button>
-                                                <button onClick={() => { setEditingTransaction(null); setIsTransactionModalOpen(true); }} className="flex-1 sm:flex-none flex justify-center items-center gap-1.5 bg-stone-800 hover:bg-stone-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-                                                    <Icons.Plus className="w-4 h-4" /> 내역 추가
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* 검색 & 비목 필터 */}
-                                        <div className="flex flex-col sm:flex-row gap-2">
-                                            <div className="relative flex-1">
-                                                <Icons.Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                                <input
-                                                    type="text"
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                    placeholder="적요, 사용처, 비고, 날짜 검색..."
-                                                    className="w-full pl-9 pr-3 py-2 text-sm border border-stone-300 rounded-lg bg-white focus:ring-2 focus:ring-stone-800 outline-none"
-                                                />
-                                            </div>
-                                            <select
-                                                value={filterBudgetId}
-                                                onChange={(e) => setFilterBudgetId(e.target.value)}
-                                                className="px-3 py-2 text-sm border border-stone-300 rounded-lg bg-white focus:ring-2 focus:ring-stone-800 outline-none"
-                                            >
-                                                <option value="all">전체 비목 보기</option>
-                                                <option value="income">수입 / 입금 (사업비·이자)</option>
-                                                <option value="cat_인건비">인건비 (통합)</option>
-                                                <option value="cat_외주비">외주비 (통합)</option>
-                                                {budgets.map(b => (
-                                                    <option key={b.id} value={b.id}>[{b.category}/{b.subCategory}] {b.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {/* 데스크탑 테이블 */}
-                                    <div className="hidden md:block overflow-x-auto">
-                                        <table className="w-full text-left border-collapse text-sm">
-                                            <thead>
-                                                <tr className="bg-stone-100 text-stone-600 border-b border-stone-200">
-                                                    <th className="p-3 font-semibold text-center w-14">연번</th>
-                                                    <th className="p-3 font-semibold w-28">날짜</th>
-                                                    <th className="p-3 font-semibold">예산항목 (비목)</th>
-                                                    <th className="p-3 font-semibold">적요</th>
-                                                    <th className="p-3 font-semibold">사용처</th>
-                                                    <th className="p-3 font-semibold text-right w-32">사용금액</th>
-                                                    <th className="p-3 font-semibold text-center w-24">사용방법</th>
-                                                    <th className="p-3 font-semibold">비고</th>
-                                                    <th className="p-3 font-semibold text-center w-20">관리</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-stone-100">
-                                                {filteredTransactions.map(tx => {
-                                                    const label = getBudgetLabel(tx);
-                                                    const isCancel = !tx.isIncome && tx.amount < 0;
-                                                    return (
-                                                        <tr key={tx.id} className={`hover:bg-stone-50/70 transition-colors ${tx.isIncome ? 'bg-blue-50/30' : ''}`}>
-                                                            <td className="p-3 text-center text-stone-400 text-xs">{tx.no || '-'}</td>
-                                                            <td className="p-3 text-stone-600 whitespace-nowrap">{formatDate(tx.date)}</td>
-                                                            <td className="p-3">
-                                                                {label.type === 'income' && <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">{label.text}</span>}
-                                                                {label.type === 'cat' && <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">{label.text}</span>}
-                                                                {label.type === 'item' && (
-                                                                    <div>
-                                                                        <span className="text-xs text-stone-500 mr-1">[{label.category} &gt; {label.subCategory}]</span>
-                                                                        <span className="font-medium text-stone-900">{label.name}</span>
-                                                                    </div>
-                                                                )}
-                                                                {label.type === 'none' && <span className="text-red-500 text-xs">미지정</span>}
-                                                            </td>
-                                                            <td className="p-3 text-stone-800 font-medium">{tx.description}</td>
-                                                            <td className="p-3 text-stone-600">{tx.merchant}</td>
-                                                            <td className={`p-3 text-right font-bold whitespace-nowrap ${
-                                                                tx.isIncome ? 'text-blue-600' : isCancel ? 'text-emerald-600' : 'text-stone-900'
-                                                            }`}>
-                                                                {tx.isIncome ? `(+) ${formatCurrency(tx.amount)}` : isCancel ? `(+) ${formatCurrency(Math.abs(tx.amount))}` : formatCurrency(tx.amount)}
-                                                            </td>
-                                                            <td className="p-3 text-center">
-                                                                {tx.method && (
-                                                                    <span className={`px-2 py-0.5 rounded text-xs ${tx.method === '체크카드' ? 'bg-stone-100 text-stone-700' : 'bg-stone-200/70 text-stone-700'}`}>
-                                                                        {tx.method}
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            <td className="p-3 text-xs text-stone-500">{tx.note}</td>
-                                                            <td className="p-3">
-                                                                <div className="flex justify-center gap-1">
-                                                                    <button onClick={() => { setEditingTransaction(tx); setIsTransactionModalOpen(true); }} className="text-stone-400 hover:text-blue-600 p-1"><Icons.Edit2 className="w-4 h-4" /></button>
-                                                                    <button onClick={() => deleteTransaction(tx.id)} className="text-stone-400 hover:text-red-600 p-1"><Icons.Trash2 className="w-4 h-4" /></button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                                {filteredTransactions.length === 0 && <tr><td colSpan="9" className="p-8 text-center text-stone-500">조건에 맞는 내역이 없습니다.</td></tr>}
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    {/* 모바일 카드 뷰 */}
-                                    <div className="md:hidden divide-y divide-stone-100">
-                                        {filteredTransactions.map(tx => {
-                                            const label = getBudgetLabel(tx);
-                                            const isCancel = !tx.isIncome && tx.amount < 0;
-                                            return (
-                                                <div key={tx.id} className={`p-4 space-y-2 ${tx.isIncome ? 'bg-blue-50/30' : ''}`}>
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-bold text-stone-400">#{tx.no || '-'}</span>
-                                                            <span className="text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded">{formatDate(tx.date)}</span>
-                                                            {tx.method && <span className="text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded">{tx.method}</span>}
-                                                        </div>
-                                                        <div className="flex gap-1">
-                                                            <button onClick={() => { setEditingTransaction(tx); setIsTransactionModalOpen(true); }} className="p-1 text-stone-400"><Icons.Edit2 className="w-4 h-4" /></button>
-                                                            <button onClick={() => deleteTransaction(tx.id)} className="p-1 text-stone-400"><Icons.Trash2 className="w-4 h-4" /></button>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-xs mb-1">
-                                                            {label.type === 'income' && <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">{label.text}</span>}
-                                                            {label.type === 'cat' && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">{label.text}</span>}
-                                                            {label.type === 'item' && <span className="text-stone-500">[{label.category}/{label.subCategory}] {label.name}</span>}
-                                                        </div>
-                                                        <div className="flex justify-between items-baseline">
-                                                            <div>
-                                                                <h3 className="font-bold text-stone-900 text-sm">{tx.description}</h3>
-                                                                <p className="text-xs text-stone-500">{tx.merchant}{tx.note ? ` · ${tx.note}` : ''}</p>
-                                                            </div>
-                                                            <span className={`font-bold text-base whitespace-nowrap ml-2 ${
-                                                                tx.isIncome ? 'text-blue-600' : isCancel ? 'text-emerald-600' : 'text-rose-600'
-                                                            }`}>
-                                                                {tx.isIncome ? `(+) ${formatCurrency(tx.amount)}` : isCancel ? `(+) ${formatCurrency(Math.abs(tx.amount))}` : `${formatCurrency(tx.amount)}원`}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                        {filteredTransactions.length === 0 && <div className="p-8 text-center text-stone-500 text-sm">조건에 맞는 내역이 없습니다.</div>}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* ===================== [파일연동 탭] ===================== */}
-                            {activeTab === 'file' && (
-                                <div className="max-w-2xl mx-auto">
-                                    <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 sm:p-8 text-center">
-                                        <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-5"><Icons.FileSpreadsheet className="w-8 h-8 text-emerald-600" /></div>
-                                        <h2 className="text-xl sm:text-2xl font-bold text-stone-800 mb-2">통장내역 엑셀 업로드</h2>
-                                        <p className="text-sm text-stone-500 mb-6 max-w-md mx-auto">은행 거래내역 엑셀 파일을 업로드하세요. '거래일시', '출금액', '적요', '내용'을 자동으로 파악해 사용내역에 추가합니다.</p>
-                                        <div className="relative border-2 border-dashed border-stone-300 bg-stone-50 hover:bg-stone-100 rounded-xl p-10 transition-colors">
-                                            <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="엑셀 파일 선택" />
-                                            <div className="pointer-events-none flex flex-col items-center gap-3">
-                                                <Icons.Upload className="w-8 h-8 text-stone-400" />
-                                                <span className="font-medium text-stone-700 text-sm">클릭하거나 엑셀 파일을 이곳에 드래그 하세요</span>
-                                                <span className="text-xs text-stone-400">지원 형식: .xlsx, .xls</span>
-                                            </div>
-                                        </div>
-                                        <div className="mt-6 text-left bg-stone-50 p-4 rounded-lg text-xs sm:text-sm text-stone-600">
-                                            <h4 className="font-bold text-stone-800 mb-2 flex items-center gap-1.5"><Icons.AlertCircle className="w-4 h-4"/> 참고사항</h4>
-                                            <ul className="list-disc list-inside space-y-1 ml-1">
-                                                <li>'거래일시(날짜)', '출금액(사용금액)' 등의 헤더가 포함되어야 합니다.</li>
-                                                <li>업로드된 내역은 자동으로 브라우저에 저장되며, '사용내역' 탭에서 비목을 수정할 수 있습니다.</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </main>
-
-                    {/* 모달: 예산 */}
-                    {isBudgetModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-                            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                                <div className="flex justify-between items-center p-5 border-b border-stone-100">
-                                    <h3 className="text-lg font-bold text-stone-900">{editingBudget ? '예산 항목 수정' : '새 예산 항목 추가'}</h3>
-                                    <button onClick={() => setIsBudgetModalOpen(false)} className="text-stone-400 hover:text-stone-700"><Icons.X className="w-5 h-5" /></button>
-                                </div>
-                                <form onSubmit={handleBudgetSubmit} className="p-5 space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="block text-sm font-medium text-stone-700 mb-1">구분</label><input name="category" defaultValue={editingBudget?.category || ''} required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" /></div>
-                                        <div><label className="block text-sm font-medium text-stone-700 mb-1">비목</label><input name="subCategory" defaultValue={editingBudget?.subCategory || ''} required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" /></div>
-                                    </div>
-                                    <div><label className="block text-sm font-medium text-stone-700 mb-1">내용 (항목명)</label><input name="name" defaultValue={editingBudget?.name || ''} required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" /></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="block text-sm font-medium text-stone-700 mb-1">2026 금액 (원)</label><input type="number" name="amount2026" defaultValue={editingBudget?.amount2026 || 0} required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" /></div>
-                                        <div><label className="block text-sm font-medium text-stone-700 mb-1">2027 금액 (원)</label><input type="number" name="amount2027" defaultValue={editingBudget?.amount2027 || 0} required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" /></div>
-                                    </div>
-                                    <div className="pt-4 flex gap-3">
-                                        <button type="button" onClick={() => setIsBudgetModalOpen(false)} className="flex-1 px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium rounded-lg">취소</button>
-                                        <button type="submit" className="flex-1 px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white font-medium rounded-lg">저장</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 모달: 사용내역 */}
-                    {isTransactionModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-                            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto">
-                                <div className="flex justify-between items-center p-5 border-b border-stone-100 sticky top-0 bg-white">
-                                    <h3 className="text-lg font-bold text-stone-900">{editingTransaction ? '사용 내역 수정' : '새 사용 내역 추가'}</h3>
-                                    <button onClick={() => setIsTransactionModalOpen(false)} className="text-stone-400 hover:text-stone-700"><Icons.X className="w-5 h-5" /></button>
-                                </div>
-                                <form onSubmit={handleTransactionSubmit} className="p-5 space-y-4">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div><label className="block text-sm font-medium text-stone-700 mb-1">날짜</label><input type="date" name="date" defaultValue={editingTransaction?.date || new Date().toISOString().split('T')[0]} required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" /></div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-stone-700 mb-1">사용방법</label>
-                                            <select name="method" defaultValue={editingTransaction?.method || '체크카드'} className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none bg-white">
-                                                <option value="체크카드">체크카드</option>
-                                                <option value="계좌이체">계좌이체</option>
-                                                <option value="">해당없음</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-stone-700 mb-1">예산 항목 (비목)</label>
-                                        <select name="budgetId" defaultValue={editingTransaction?.budgetId || 'b12'} required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none bg-white">
-                                            <option value="income">수입 / 입금 (사업비·이자)</option>
-                                            <option value="cat_인건비">인건비 (통합 정산)</option>
-                                            <option value="cat_외주비">외주비 (통합 정산)</option>
-                                            {budgets.map(b => <option key={b.id} value={b.id}>[{b.category}/{b.subCategory}] {b.name}</option>)}
-                                        </select>
-                                    </div>
-                                    <div><label className="block text-sm font-medium text-stone-700 mb-1">적요</label><input name="description" defaultValue={editingTransaction?.description || ''} required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" /></div>
-                                    <div><label className="block text-sm font-medium text-stone-700 mb-1">사용처</label><input name="merchant" defaultValue={editingTransaction?.merchant || ''} className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" /></div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-stone-700 mb-1">금액 (원) <span className="text-xs font-normal text-stone-400">※ 결제 취소는 마이너스(-) 입력</span></label>
-                                        <input type="number" name="amount" defaultValue={editingTransaction?.amount ?? ''} required className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" />
-                                    </div>
-                                    <div><label className="block text-sm font-medium text-stone-700 mb-1">비고</label><input name="note" defaultValue={editingTransaction?.note || ''} className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-800 outline-none" /></div>
-                                    <div className="pt-4 flex gap-3">
-                                        <button type="button" onClick={() => setIsTransactionModalOpen(false)} className="flex-1 px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-medium rounded-lg">취소</button>
-                                        <button type="submit" className="flex-1 px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white font-medium rounded-lg">저장</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 모달: 확인(삭제/초기화) */}
-                    {confirmModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-                            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-                                <div className="p-5">
-                                    <h3 className="text-base font-bold text-stone-900 mb-2">{confirmModal.title}</h3>
-                                    <p className="text-sm text-stone-600">{confirmModal.message}</p>
-                                </div>
-                                <div className="px-5 py-3 bg-stone-50 flex gap-2 justify-end border-t border-stone-100">
-                                    <button type="button" onClick={() => setConfirmModal(null)} className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 text-sm font-medium rounded-lg">취소</button>
-                                    <button type="button" onClick={confirmModal.onConfirm} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded-lg">확인</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+      // 엑셀 파일 업로드 처리
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!window.XLSX) {
+          showToast('엑셀 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.');
+          return;
         }
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const wb = window.XLSX.read(evt.target.result, { type: 'binary' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = window.XLSX.utils.sheet_to_json(ws);
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<Dal2silBudgetApp />);
-    </script>
+            let maxId = transactions.reduce((m, t) => Math.max(m, t.id), 0);
+            const added = [];
+
+            rows.forEach((row) => {
+              const rawDate = row['거래일시'] || row['날짜'] || '';
+              const dateStr = String(rawDate).slice(0, 10).replace(/\./g, '-');
+              const inAmt = Number(String(row['입금액'] || '0').replace(/[^0-9.-]/g, '')) || 0;
+              const outAmt = Number(String(row['출금액'] || '0').replace(/[^0-9.-]/g, '')) || 0;
+              const desc = row['적요'] || row['내용'] || '통장 거래';
+              const vendor = row['내용'] || row['사용처'] || row['거래점명'] || '';
+              const note = row['메모'] || row['비고'] || '';
+
+              if (!dateStr || (inAmt === 0 && outAmt === 0)) return;
+
+              maxId += 1;
+              if (inAmt > 0) {
+                added.push({
+                  id: maxId, date: dateStr, category: '입금', desc, vendor,
+                  amount: inAmt, type: 'income', method: '계좌이체', note
+                });
+              } else {
+                // 자동 비목 추정
+                let autoCat = '경비 - 유지 관리비';
+                const text = `${desc} ${vendor} ${note}`;
+                if (text.includes('블랭크') || text.includes('인건비')) autoCat = '인건비';
+                else if (text.includes('고라니') || text.includes('박영민') || text.includes('용역')) autoCat = '외주비';
+                else if (text.includes('주유') || text.includes('배송') || text.includes('회의')) autoCat = '경비 - 기타경비';
+                else if (text.includes('홍보') || text.includes('촬영') || text.includes('다과')) autoCat = '경비 - 홍보비';
+
+                added.push({
+                  id: maxId, date: dateStr, category: autoCat, desc, vendor,
+                  amount: outAmt, type: 'expense', method: text.includes('체크') ? '체크카드' : '계좌이체', note
+                });
+              }
+            });
+
+            if (added.length > 0) {
+              setTransactions(prev => [...prev, ...added]);
+              showToast(`${added.length}건의 거래내역이 추가되었습니다.`);
+              setActiveTab('history');
+            } else {
+              showToast('추가할 수 있는 유효한 거래내역을 찾지 못했습니다.');
+            }
+          } catch (err) {
+            showToast('엑셀 파일 분석 중 오류가 발생했습니다.');
+          }
+        };
+        reader.readAsBinaryString(file);
+        e.target.value = '';
+      };
+
+      // 사용내역 저장
+      const saveTx = (form) => {
+        const amt = Number(form.amount) || 0;
+        const isIncome = form.category === '입금';
+        const txObj = {
+          ...form,
+          amount: isIncome ? Math.abs(amt) : amt,
+          type: isIncome ? 'income' : (amt < 0 ? 'refund' : 'expense')
+        };
+        if (form.id) {
+          setTransactions(prev => prev.map(t => t.id === form.id ? txObj : t));
+          showToast('사용내역이 수정되었습니다.');
+        } else {
+          const nextId = transactions.reduce((m, t) => Math.max(m, t.id), 0) + 1;
+          setTransactions(prev => [...prev, { ...txObj, id: nextId }]);
+          showToast('새 사용내역이 추가되었습니다.');
+        }
+        setTxModal({ open: false, data: null });
+      };
+
+      // 예산항목 저장
+      const saveBudget = (form) => {
+        const obj = {
+          ...form,
+          b2026: Number(form.b2026) || 0,
+          b2027: Number(form.b2027) || 0
+        };
+        if (form.id) {
+          setBudgetItems(prev => prev.map(b => b.id === form.id ? obj : b));
+          showToast('예산 항목이 수정되었습니다.');
+        } else {
+          setBudgetItems(prev => [...prev, { ...obj, id: 'b' + Date.now() }]);
+          showToast('새 예산 항목이 추가되었습니다.');
+        }
+        setBudgetModal({ open: false, data: null });
+      };
+
+      // 필터링된 사용내역 (최신순)
+      const filteredTx = useMemo(() => {
+        return [...transactions]
+          .sort((a, b) => b.id - a.id)
+          .filter(t => {
+            if (filterCat !== '전체' && t.category !== filterCat) return false;
+            if (!search.trim()) return true;
+            const q = search.toLowerCase();
+            return (
+              (t.date || '').toLowerCase().includes(q) ||
+              (t.desc || '').toLowerCase().includes(q) ||
+              (t.vendor || '').toLowerCase().includes(q) ||
+              (t.note || '').toLowerCase().includes(q) ||
+              (t.category || '').toLowerCase().includes(q)
+            );
+          });
+      }, [transactions, search, filterCat]);
+
+      return (
+        <div className="min-h-screen bg-stone-100 pb-12">
+          {/* 상단 고정 헤더 + 요약 + 탭 */}
+          <div className="sticky top-0 z-30 bg-stone-100/95 backdrop-blur border-b border-stone-200 shadow-sm">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3">
+              {/* 타이틀 바 */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-stone-900 text-white flex items-center justify-center font-bold text-sm">달</div>
+                  <h1 className="text-base sm:text-lg font-bold text-stone-900">&lt;스테이달이실&gt; 예산관리</h1>
+                </div>
+                <button
+                  onClick={() => setConfirmModal({
+                    open: true,
+                    message: '모든 수정 내역을 초기화하고 처음 데이터(119건)로 되돌리시겠습니까?',
+                    onConfirm: () => {
+                      setBudgetItems(INITIAL_BUDGET);
+                      setTransactions(INITIAL_TRANSACTIONS);
+                      localStorage.removeItem('dal2sil_budget_v2');
+                      localStorage.removeItem('dal2sil_tx_v2');
+                      showToast('초기 데이터로 복원되었습니다.');
+                      setConfirmModal({ open: false, message: '', onConfirm: null });
+                    }
+                  })}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white border border-stone-300 text-stone-600 hover:bg-stone-50"
+                >
+                  ↺ 초기화
+                </button>
+              </div>
+
+              {/* 요약 카드 4개 */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3">
+                <div className="bg-white rounded-xl p-2.5 sm:p-3.5 border border-stone-200 shadow-xs">
+                  <div className="text-[11px] sm:text-xs text-stone-500">총 입금액 (사업비+이자)</div>
+                  <div className="text-sm sm:text-lg font-bold text-blue-700 mt-0.5">{fmt(summary.totalIncome)}원</div>
+                </div>
+                <div className="bg-white rounded-xl p-2.5 sm:p-3.5 border border-stone-200 shadow-xs">
+                  <div className="text-[11px] sm:text-xs text-stone-500">실제 사용금액 (누적)</div>
+                  <div className="text-sm sm:text-lg font-bold text-rose-600 mt-0.5">{fmt(summary.totalExpense)}원</div>
+                </div>
+                <div className="bg-white rounded-xl p-2.5 sm:p-3.5 border border-stone-200 shadow-xs">
+                  <div className="text-[11px] sm:text-xs text-stone-500">현재 통장 잔액 (계산)</div>
+                  <div className="text-sm sm:text-lg font-bold text-emerald-700 mt-0.5">{fmt(summary.balance)}원</div>
+                </div>
+                <div className="bg-white rounded-xl p-2.5 sm:p-3.5 border border-stone-200 shadow-xs">
+                  <div className="text-[11px] sm:text-xs text-stone-500">26년 입금 대비 집행률</div>
+                  <div className="text-sm sm:text-lg font-bold text-stone-900 mt-0.5">{summary.rate}%</div>
+                </div>
+              </div>
+
+              {/* 탭 메뉴 */}
+              <div className="grid grid-cols-3 gap-1.5 bg-stone-200/80 p-1 rounded-xl">
+                {[
+                  { id: 'budget', label: '예산현황' },
+                  { id: 'history', label: `사용내역 (${transactions.length})` },
+                  { id: 'upload', label: '파일연동' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`py-2 text-xs sm:text-sm font-semibold rounded-lg transition ${
+                      activeTab === tab.id
+                        ? 'bg-white text-stone-900 shadow-sm'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 메인 컨텐츠 */}
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 mt-4 animate-fade-in">
+            {/* 1. 예산현황 탭 */}
+            {activeTab === 'budget' && (
+              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-base font-bold text-stone-900">2026-2027 운영 예산현황</h2>
+                    <p className="text-xs text-stone-500 mt-0.5">사용내역 탭의 지출 데이터가 실시간으로 합산됩니다. (항목 클릭 시 수정 가능)</p>
+                  </div>
+                  <button
+                    onClick={() => setBudgetModal({ open: true, data: { category: '경비', item: '', detail: '', b2026: 0, b2027: 0 } })}
+                    className="px-3.5 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800"
+                  >
+                    + 항목 추가
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs sm:text-sm border-collapse min-w-[920px]">
+                    <thead>
+                      <tr className="bg-stone-100 text-stone-700 border-b border-stone-200">
+                        <th className="py-2.5 px-3 text-center font-semibold border-r border-stone-200 w-16">구분</th>
+                        <th className="py-2.5 px-3 text-left font-semibold border-r border-stone-200">비목</th>
+                        <th className="py-2.5 px-3 text-left font-semibold border-r border-stone-200">내용</th>
+                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200">2026 금액</th>
+                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200 bg-rose-50/70 text-rose-700">26년 사용</th>
+                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200">2027 금액</th>
+                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200 bg-rose-50/70 text-rose-700">27년 사용</th>
+                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200">합계 (예산)</th>
+                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200 bg-rose-50/70 text-rose-700">총 사용</th>
+                        <th className="py-2.5 px-3 text-right font-semibold border-r border-stone-200 text-emerald-700">잔여예산</th>
+                        <th className="py-2.5 px-3 text-right font-semibold w-16">집행률</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-200">
+                      {/* 인건비 섹션 (통합 정산 병합 표시) */}
+                      {calc.labor.rows.map((row, idx) => (
+                        <tr key={row.id} className="hover:bg-stone-50">
+                          {idx === 0 && (
+                            <td rowSpan={calc.labor.rows.length + 1} className="py-2 px-2 text-center font-bold bg-stone-50 border-r border-stone-200">인건비</td>
+                          )}
+                          <td className="py-2 px-3 border-r border-stone-200 font-medium cursor-pointer hover:text-blue-600" onClick={() => setBudgetModal({ open: true, data: row })}>{row.item}</td>
+                          <td className="py-2 px-3 border-r border-stone-200 text-stone-600">{row.detail}</td>
+                          <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2026)}</td>
+                          {idx === 0 && (
+                            <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                              {fmt(calc.usedLabor26)}
+                              <div className="text-[10px] text-stone-400 font-normal">통합 정산</div>
+                            </td>
+                          )}
+                          <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2027)}</td>
+                          {idx === 0 && (
+                            <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                              {fmt(calc.usedLabor27)}
+                            </td>
+                          )}
+                          <td className="py-2 px-3 text-right border-r border-stone-200 font-medium">{fmt(row.b2026 + row.b2027)}</td>
+                          {idx === 0 && (
+                            <>
+                              <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                                {fmt(calc.usedLabor26 + calc.usedLabor27)}
+                              </td>
+                              <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700 font-semibold align-middle">
+                                {fmt(calc.labor.tot - (calc.usedLabor26 + calc.usedLabor27))}
+                              </td>
+                              <td rowSpan={calc.labor.rows.length} className="py-2 px-3 text-right font-semibold align-middle">
+                                {calc.labor.tot > 0 ? (((calc.usedLabor26 + calc.usedLabor27) / calc.labor.tot) * 100).toFixed(1) : '0.0'}%
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                      <tr className="bg-blue-50/40 font-bold text-blue-700">
+                        <td colSpan={2} className="py-2 px-3 text-center border-r border-stone-200">소계</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.labor.b26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedLabor26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.labor.b27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedLabor27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.labor.tot)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedLabor26 + calc.usedLabor27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.labor.tot - (calc.usedLabor26 + calc.usedLabor27))}</td>
+                        <td className="py-2 px-3 text-right text-stone-800">{calc.labor.tot > 0 ? (((calc.usedLabor26 + calc.usedLabor27) / calc.labor.tot) * 100).toFixed(1) : '0.0'}%</td>
+                      </tr>
+
+                      {/* 외주비 섹션 (통합 정산 병합 표시) */}
+                      {calc.outsource.rows.map((row, idx) => (
+                        <tr key={row.id} className="hover:bg-stone-50">
+                          {idx === 0 && (
+                            <td rowSpan={calc.outsource.rows.length + 1} className="py-2 px-2 text-center font-bold bg-stone-50 border-r border-stone-200">외주비</td>
+                          )}
+                          <td className="py-2 px-3 border-r border-stone-200 font-medium cursor-pointer hover:text-blue-600" onClick={() => setBudgetModal({ open: true, data: row })}>{row.item}</td>
+                          <td className="py-2 px-3 border-r border-stone-200 text-stone-600">{row.detail}</td>
+                          <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2026)}</td>
+                          {idx === 0 && (
+                            <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                              {fmt(calc.usedOut26)}
+                              <div className="text-[10px] text-stone-400 font-normal">통합 정산</div>
+                            </td>
+                          )}
+                          <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2027)}</td>
+                          {idx === 0 && (
+                            <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                              {fmt(calc.usedOut27)}
+                            </td>
+                          )}
+                          <td className="py-2 px-3 text-right border-r border-stone-200 font-medium">{fmt(row.b2026 + row.b2027)}</td>
+                          {idx === 0 && (
+                            <>
+                              <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-semibold align-middle">
+                                {fmt(calc.usedOut26 + calc.usedOut27)}
+                              </td>
+                              <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700 font-semibold align-middle">
+                                {fmt(calc.outsource.tot - (calc.usedOut26 + calc.usedOut27))}
+                              </td>
+                              <td rowSpan={calc.outsource.rows.length} className="py-2 px-3 text-right font-semibold align-middle">
+                                {calc.outsource.tot > 0 ? (((calc.usedOut26 + calc.usedOut27) / calc.outsource.tot) * 100).toFixed(1) : '0.0'}%
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                      <tr className="bg-blue-50/40 font-bold text-blue-700">
+                        <td colSpan={2} className="py-2 px-3 text-center border-r border-stone-200">소계</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.outsource.b26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedOut26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.outsource.b27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedOut27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.outsource.tot)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedOut26 + calc.usedOut27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.outsource.tot - (calc.usedOut26 + calc.usedOut27))}</td>
+                        <td className="py-2 px-3 text-right text-stone-800">{calc.outsource.tot > 0 ? (((calc.usedOut26 + calc.usedOut27) / calc.outsource.tot) * 100).toFixed(1) : '0.0'}%</td>
+                      </tr>
+
+                      {/* 경비 섹션 */}
+                      {calc.expense.rows.map((row, idx) => {
+                        const isFirstOfItem = idx === 0 || calc.expense.rows[idx - 1].item !== row.item;
+                        const sameItemRows = calc.expense.rows.filter(r => r.item === row.item);
+                        const itemTotBudget = sameItemRows.reduce((s, r) => s + r.b2026 + r.b2027, 0);
+                        const u26 = getUsed('경비', row.item, 2026);
+                        const u27 = getUsed('경비', row.item, 2027);
+                        const uTot = u26 + u27;
+
+                        return (
+                          <tr key={row.id} className="hover:bg-stone-50">
+                            {idx === 0 && (
+                              <td rowSpan={calc.expense.rows.length + 1} className="py-2 px-2 text-center font-bold bg-stone-50 border-r border-stone-200">경비</td>
+                            )}
+                            <td className="py-2 px-3 border-r border-stone-200 font-medium cursor-pointer hover:text-blue-600" onClick={() => setBudgetModal({ open: true, data: row })}>{row.item}</td>
+                            <td className="py-2 px-3 border-r border-stone-200 text-stone-600">{row.detail}</td>
+                            <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2026)}</td>
+                            {isFirstOfItem && (
+                              <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-medium align-middle">
+                                {fmt(u26)}
+                              </td>
+                            )}
+                            <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(row.b2027)}</td>
+                            {isFirstOfItem && (
+                              <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-medium align-middle">
+                                {fmt(u27)}
+                              </td>
+                            )}
+                            <td className="py-2 px-3 text-right border-r border-stone-200 font-medium">{fmt(row.b2026 + row.b2027)}</td>
+                            {isFirstOfItem && (
+                              <>
+                                <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r border-stone-200 bg-rose-50/30 text-rose-600 font-medium align-middle">
+                                  {fmt(uTot)}
+                                </td>
+                                <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700 font-medium align-middle">
+                                  {fmt(itemTotBudget - uTot)}
+                                </td>
+                                <td rowSpan={sameItemRows.length} className="py-2 px-3 text-right font-medium align-middle">
+                                  {itemTotBudget > 0 ? ((uTot / itemTotBudget) * 100).toFixed(1) : '0.0'}%
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-blue-50/40 font-bold text-blue-700">
+                        <td colSpan={2} className="py-2 px-3 text-center border-r border-stone-200">소계</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.expense.b26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedExp26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.expense.b27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedExp27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.expense.tot)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(calc.usedExp26 + calc.usedExp27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.expense.tot - (calc.usedExp26 + calc.usedExp27))}</td>
+                        <td className="py-2 px-3 text-right text-stone-800">{calc.expense.tot > 0 ? (((calc.usedExp26 + calc.usedExp27) / calc.expense.tot) * 100).toFixed(1) : '0.0'}%</td>
+                      </tr>
+
+                      {/* 하단 집계 (엑셀 수식 100% 반영) */}
+                      <tr className="bg-stone-100 font-bold">
+                        <td colSpan={3} className="py-2.5 px-3 text-center border-r border-stone-200">순 원가 합계</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.net26)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.expense2026)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.net27)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.expense2027)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.netTot)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.totalExpense)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.netTot - summary.totalExpense)}</td>
+                        <td className="py-2.5 px-3 text-right">{calc.netTot > 0 ? ((summary.totalExpense / calc.netTot) * 100).toFixed(1) : '0.0'}%</td>
+                      </tr>
+                      <tr className="text-stone-600">
+                        <td colSpan={3} className="py-2 px-3 text-center border-r border-stone-200">일반 관리비 (5%)</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.admin26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.admin27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.adminTot)}</td>
+                        <td colSpan={3} className="py-2 px-3 text-center text-xs text-stone-400">순 원가 × 5%</td>
+                      </tr>
+                      <tr className="text-stone-600">
+                        <td colSpan={3} className="py-2 px-3 text-center border-r border-stone-200">기업 이윤 (3%)</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.profit26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.profit27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.profitTot)}</td>
+                        <td colSpan={3} className="py-2 px-3 text-center text-xs text-stone-400">(순 원가 + 일반 관리비) × 3%</td>
+                      </tr>
+                      <tr className="bg-blue-50/70 font-bold text-blue-800">
+                        <td colSpan={3} className="py-2.5 px-3 text-center border-r border-stone-200">운영 원가</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.op26)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 font-normal text-stone-400">-</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.op27)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 font-normal text-stone-400">-</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.opTot)}</td>
+                        <td colSpan={3}></td>
+                      </tr>
+                      <tr className="text-stone-600">
+                        <td colSpan={3} className="py-2 px-3 text-center border-r border-stone-200">부가 가치세 (10%)</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.vat26)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.vat27)}</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">-</td>
+                        <td className="py-2 px-3 text-right border-r border-stone-200">{fmt(calc.vatTot)}</td>
+                        <td colSpan={3}></td>
+                      </tr>
+                      <tr className="bg-blue-100/60 font-bold text-blue-900">
+                        <td colSpan={3} className="py-2.5 px-3 text-center border-r border-stone-200">총 운영비용</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.tot26)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.expense2026)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.tot27)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.expense2027)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200">{fmt(calc.totAll)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-rose-600">{fmt(summary.totalExpense)}</td>
+                        <td className="py-2.5 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.totAll - summary.totalExpense)}</td>
+                        <td className="py-2.5 px-3 text-right">{calc.totAll > 0 ? ((summary.totalExpense / calc.totAll) * 100).toFixed(1) : '0.0'}%</td>
+                      </tr>
+                      <tr className="bg-rose-50 font-bold text-rose-700">
+                        <td colSpan={3} className="py-3 px-3 text-center border-r border-stone-200">최종 운영비용 (만원 단위 이하 절사)</td>
+                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(calc.final26)}</td>
+                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(summary.expense2026)}</td>
+                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(calc.final27)}</td>
+                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(summary.expense2027)}</td>
+                        <td className="py-3 px-3 text-right border-r border-stone-200 text-base">{fmt(calc.finalAll)}</td>
+                        <td className="py-3 px-3 text-right border-r border-stone-200">{fmt(summary.totalExpense)}</td>
+                        <td className="py-3 px-3 text-right border-r border-stone-200 text-emerald-700">{fmt(calc.finalAll - summary.totalExpense)}</td>
+                        <td className="py-3 px-3 text-right">{calc.finalAll > 0 ? ((summary.totalExpense / calc.finalAll) * 100).toFixed(1) : '0.0'}%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 2. 사용내역 탭 */}
+            {activeTab === 'history' && (
+              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-bold text-stone-900">전체 사용 내역</h2>
+                    <p className="text-xs text-stone-500 mt-0.5">총 {filteredTx.length}건이 표시되고 있습니다.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab('upload')}
+                      className="px-3 py-2 bg-white border border-stone-300 text-stone-700 text-xs font-semibold rounded-lg hover:bg-stone-50"
+                    >
+                      엑셀 업로드
+                    </button>
+                    <button
+                      onClick={() => setTxModal({
+                        open: true,
+                        data: { date: new Date().toISOString().slice(0, 10), category: '경비 - 유지 관리비', desc: '', vendor: '', amount: '', method: '체크카드', note: '' }
+                      })}
+                      className="px-3.5 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800"
+                    >
+                      + 내역 추가
+                    </button>
+                  </div>
+                </div>
+
+                {/* 검색 & 필터 */}
+                <div className="p-3 bg-stone-50 border-b border-stone-200 flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="적요, 사용처, 비고, 날짜 검색..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="flex-1 px-3 py-2 text-xs sm:text-sm bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-400"
+                  />
+                  <select
+                    value={filterCat}
+                    onChange={(e) => setFilterCat(e.target.value)}
+                    className="px-3 py-2 text-xs sm:text-sm bg-white border border-stone-300 rounded-lg focus:outline-none"
+                  >
+                    <option value="전체">전체 비목 보기</option>
+                    {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs sm:text-sm border-collapse min-w-[760px]">
+                    <thead>
+                      <tr className="bg-stone-100 text-stone-600 border-b border-stone-200">
+                        <th className="py-2.5 px-3 text-center w-14">연번</th>
+                        <th className="py-2.5 px-3 text-left w-28">날짜</th>
+                        <th className="py-2.5 px-3 text-left">비목</th>
+                        <th className="py-2.5 px-3 text-left">적요</th>
+                        <th className="py-2.5 px-3 text-left">사용처</th>
+                        <th className="py-2.5 px-3 text-right">사용금액</th>
+                        <th className="py-2.5 px-3 text-center w-20">방법</th>
+                        <th className="py-2.5 px-3 text-left">비고</th>
+                        <th className="py-2.5 px-3 text-center w-20">관리</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {filteredTx.map(t => (
+                        <tr key={t.id} className="hover:bg-stone-50">
+                          <td className="py-2.5 px-3 text-center text-stone-400">{t.id}</td>
+                          <td className="py-2.5 px-3 text-stone-600">{t.date}</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
+                              t.category === '입금' ? 'bg-blue-100 text-blue-700' :
+                              t.category === '인건비' ? 'bg-amber-100 text-amber-800' :
+                              t.category === '외주비' ? 'bg-purple-100 text-purple-800' :
+                              'bg-stone-100 text-stone-700'
+                            }`}>
+                              {t.category}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-medium text-stone-800">{t.desc}</td>
+                          <td className="py-2.5 px-3 text-stone-600">{t.vendor}</td>
+                          <td className={`py-2.5 px-3 text-right font-semibold ${
+                            t.type === 'income' ? 'text-blue-600' :
+                            t.amount < 0 ? 'text-emerald-600' : 'text-stone-900'
+                          }`}>
+                            {t.type === 'income' ? `(+) ${fmt(t.amount)}` :
+                             t.amount < 0 ? `(+) ${fmt(Math.abs(t.amount))}` : fmt(t.amount)}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {t.method && <span className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded text-[11px]">{t.method}</span>}
+                          </td>
+                          <td className="py-2.5 px-3 text-stone-500 text-xs">{t.note}</td>
+                          <td className="py-2.5 px-3 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button onClick={() => setTxModal({ open: true, data: t })} className="text-stone-400 hover:text-stone-900 text-xs">수정</button>
+                              <button
+                                onClick={() => setConfirmModal({
+                                  open: true,
+                                  message: `${t.id}번 내역(${t.desc})을 삭제하시겠습니까?`,
+                                  onConfirm: () => {
+                                    setTransactions(prev => prev.filter(x => x.id !== t.id));
+                                    showToast('내역이 삭제되었습니다.');
+                                    setConfirmModal({ open: false, message: '', onConfirm: null });
+                                  }
+                                })}
+                                className="text-stone-400 hover:text-rose-600 text-xs"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 3. 파일연동 탭 */}
+            {activeTab === 'upload' && (
+              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 sm:p-10 text-center">
+                <div className="max-w-md mx-auto">
+                  <div className="w-14 h-14 rounded-2xl bg-stone-100 text-stone-700 flex items-center justify-center mx-auto mb-4 text-2xl">📄</div>
+                  <h2 className="text-lg font-bold text-stone-900">통장 거래내역 엑셀 연동</h2>
+                  <p className="text-xs sm:text-sm text-stone-500 mt-2 leading-relaxed">
+                    수신하신 통장 거래내역 엑셀 파일(.xlsx, .xls)을 업로드하면<br />
+                    날짜, 적요, 입출금액을 자동으로 읽어 [사용내역]에 추가합니다.
+                  </p>
+                  <label className="mt-6 inline-block px-6 py-3 bg-stone-900 text-white text-sm font-semibold rounded-xl cursor-pointer hover:bg-stone-800 transition">
+                    엑셀 파일 선택하기
+                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} className="hidden" />
+                  </label>
+                  <p className="text-[11px] text-stone-400 mt-4">
+                    * 업로드된 내역은 브라우저에 자동 저장되며, 사용내역 탭에서 비목을 개별 수정할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 사용내역 추가/수정 모달 */}
+          {txModal.open && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl">
+                <h3 className="text-base font-bold mb-4">{txModal.data.id ? '사용내역 수정' : '새 사용내역 추가'}</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-1">날짜</label>
+                      <input type="date" value={txModal.data.date} onChange={e => setTxModal({ ...txModal, data: { ...txModal.data, date: e.target.value } })} className="w-full px-3 py-2 border rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-1">사용방법</label>
+                      <select value={txModal.data.method} onChange={e => setTxModal({ ...txModal, data: { ...txModal.data, method: e.target.value } })} className="w-full px-3 py-2 border rounded-lg">
+                        <option value="체크카드">체크카드</option>
+                        <option value="계좌이체">계좌이체</option>
+                        <option value="">기타</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">비목</label>
+                    <select value={txModal.data.category} onChange={e => setTxModal({ ...txModal, data: { ...txModal.data, category: e.target.value } })} className="w-full px-3 py-2 border rounded-lg">
+                      {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-1">적요</label>
+                      <input type="text" value={txModal.data.desc} onChange={e => setTxModal({ ...txModal, data: { ...txModal.data, desc: e.target.value } })} className="w-full px-3 py-2 border rounded-lg" placeholder="예: 전기요금" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-1">사용처</label>
+                      <input type="text" value={txModal.data.vendor} onChange={e => setTxModal({ ...txModal, data: { ...txModal.data, vendor: e.target.value } })} className="w-full px-3 py-2 border rounded-lg" placeholder="예: 한전" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">금액 (결제 취소는 마이너스(-) 입력)</label>
+                    <input type="number" value={txModal.data.amount} onChange={e => setTxModal({ ...txModal, data: { ...txModal.data, amount: e.target.value } })} className="w-full px-3 py-2 border rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">비고</label>
+                    <input type="text" value={txModal.data.note} onChange={e => setTxModal({ ...txModal, data: { ...txModal.data, note: e.target.value } })} className="w-full px-3 py-2 border rounded-lg" />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-5">
+                  <button onClick={() => setTxModal({ open: false, data: null })} className="px-4 py-2 text-xs font-semibold text-stone-600 bg-stone-100 rounded-lg">취소</button>
+                  <button onClick={() => saveTx(txModal.data)} className="px-4 py-2 text-xs font-semibold text-white bg-stone-900 rounded-lg">저장</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 예산항목 추가/수정 모달 */}
+          {budgetModal.open && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl">
+                <h3 className="text-base font-bold mb-4">{budgetModal.data.id ? '예산 항목 수정' : '새 예산 항목 추가'}</h3>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <label className="block text-xs text-stone-500 mb-1">구분</label>
+                    <select value={budgetModal.data.category} onChange={e => setBudgetModal({ ...budgetModal, data: { ...budgetModal.data, category: e.target.value } })} className="w-full px-3 py-2 border rounded-lg">
+                      <option value="인건비">인건비</option>
+                      <option value="외주비">외주비</option>
+                      <option value="경비">경비</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-1">비목명</label>
+                      <input type="text" value={budgetModal.data.item} onChange={e => setBudgetModal({ ...budgetModal, data: { ...budgetModal.data, item: e.target.value } })} className="w-full px-3 py-2 border rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-1">세부 내용</label>
+                      <input type="text" value={budgetModal.data.detail} onChange={e => setBudgetModal({ ...budgetModal, data: { ...budgetModal.data, detail: e.target.value } })} className="w-full px-3 py-2 border rounded-lg" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-1">2026년 예산 (원)</label>
+                      <input type="number" value={budgetModal.data.b2026} onChange={e => setBudgetModal({ ...budgetModal, data: { ...budgetModal.data, b2026: e.target.value } })} className="w-full px-3 py-2 border rounded-lg" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-stone-500 mb-1">2027년 예산 (원)</label>
+                      <input type="number" value={budgetModal.data.b2027} onChange={e => setBudgetModal({ ...budgetModal, data: { ...budgetModal.data, b2027: e.target.value } })} className="w-full px-3 py-2 border rounded-lg" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-5">
+                  <button onClick={() => setBudgetModal({ open: false, data: null })} className="px-4 py-2 text-xs font-semibold text-stone-600 bg-stone-100 rounded-lg">취소</button>
+                  <button onClick={() => saveBudget(budgetModal.data)} className="px-4 py-2 text-xs font-semibold text-white bg-stone-900 rounded-lg">저장</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 확인 모달 */}
+          {confirmModal.open && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl text-center">
+                <p className="text-sm text-stone-700 mb-5">{confirmModal.message}</p>
+                <div className="flex justify-center gap-2">
+                  <button onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })} className="px-4 py-2 text-xs font-semibold text-stone-600 bg-stone-100 rounded-lg">취소</button>
+                  <button onClick={confirmModal.onConfirm} className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 rounded-lg">확인</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 토스트 알림 */}
+          {toast && (
+            <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg">
+              {toast}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 </body>
 </html>
